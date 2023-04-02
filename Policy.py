@@ -68,19 +68,19 @@ class SACPolicy(nn.Module):
     def update(self, buffer, critic_1_optim, critic_2_optim, actor_optim, alpha_optim):
         states, actions, rewards, next_states, dones = buffer.sample() 
         
-        critic_1_optim.zero_grad()
-        critic_2_optim.zero_grad()
-        actor_optim.zero_grad()
-        alpha_optim.zero_grad()
         for i in range(buffer.batch_size):
             # critic loss
             td_target = self.calc_target(rewards[i], next_states[i], dones[i])
             critic_1_q_value = torch.sum(self.critic_1(states[i])[range(len(actions[i])), actions[i]]) 
             critic_1_loss = F.mse_loss(critic_1_q_value, td_target.detach())
+            critic_1_optim.zero_grad()
             critic_1_loss.backward()
+            critic_1_optim.step()
             critic_2_q_value = torch.sum(self.critic_2(states[i])[range(len(actions[i])), actions[i]]) 
             critic_2_loss = F.mse_loss(critic_2_q_value, td_target.detach())
+            critic_2_optim.zero_grad()
             critic_2_loss.backward()
+            critic_2_optim.step()
             # actor loss
             prob = self.actor(states[i])
             log_prob = torch.log(prob + 1e-8)
@@ -89,16 +89,14 @@ class SACPolicy(nn.Module):
             q2_value = self.critic_2(states[i])
             min_qvalue = torch.sum(prob * torch.min(q1_value, q2_value)) 
             actor_loss = torch.mean( - self.log_alpha.exp() * log_prob * entropy - min_qvalue)
+            actor_optim.zero_grad()
             actor_loss.backward()
+            actor_optim.step()
             # alpha loss
             alpha_loss = torch.mean((entropy - self.target_entropy).detach() * self.log_alpha.exp())
+            alpha_optim.zero_grad()
             alpha_loss.backward()
-        # optimize
-        critic_1_optim.step()
-        critic_2_optim.step()
-        actor_optim.step()
-        alpha_optim.step()
-
+            alpha_optim.step()
         # soft update target network
         self.soft_update(self.critic_1, self.target_critic_1) 
         self.soft_update(self.critic_2, self.target_critic_2) 

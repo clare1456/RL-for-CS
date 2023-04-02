@@ -112,7 +112,6 @@ class MLP(nn.Module):
             nn.Linear(input_dim, hidden_dim), 
             nn.ReLU(), 
             nn.Linear(hidden_dim, output_dim), 
-            nn.ReLU(), 
         )
         self.process.to(device=device)
     

@@ -26,6 +26,7 @@ def trainOffPolicy(policy, args, outputFlag=False):
     ep_rewards = [] # 记录所有回合奖励
     if outputFlag:
         print("\nTraining Begin!")
+    step_cnt = 0
     for epi in range(args.train_eps):
         ep_reward = 0
         # reset environment
@@ -40,10 +41,11 @@ def trainOffPolicy(policy, args, outputFlag=False):
                 break
             obs = next_obs
             info = next_info
+            # update policy
+            if (step_cnt + 1) % args.update_steps == 0 and buffer.size() >= args.minimal_size:
+                policy.update(buffer, critic_1_optim, critic_2_optim, actor_optim, alpha_optim)
+            step_cnt += 1
         ep_rewards.append(ep_reward)
-        # update policy
-        if (epi + 1) % args.update_eps == 0:
-            policy.update(buffer, critic_1_optim, critic_2_optim, actor_optim, alpha_optim)
         # output information
         if outputFlag and (epi + 1) % args.output_eps == 0:
             print("Episode {}/{}: avg_reward = {}"
@@ -52,6 +54,7 @@ def trainOffPolicy(policy, args, outputFlag=False):
     if outputFlag:
         print("Training Finished!")
     return ep_rewards
+
 
 def test(policy, args, outputFlag=False):
     """

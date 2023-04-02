@@ -7,6 +7,8 @@ Author: CharlesLee
 Created Date: Tuesday March 7th 2023
 '''
 
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 import sys
 sys.path.append("CGAlgs")
@@ -14,11 +16,11 @@ from utils.baseImport import *
 from CGAlgs import GraphTool, ColumnGeneration
 import gymnasium as gym
 
-
 class CGEnv(gym.Env):
     def __init__(self, args):
         instance = args.instance
         limit_node_num = args.limit_node_num
+        self.max_step = args.max_step # max iteration in one episode
         file_path = "problems\{}.txt".format(instance)
         self.graph = GraphTool.Graph(file_path, limit_node_num)
         self.CGAlg = CGWithSelection(self.graph)
@@ -26,7 +28,6 @@ class CGEnv(gym.Env):
         self.observation_space = gym.spaces.Box(-np.inf, np.inf, (1,), dtype=np.float64)
         self.action_space = gym.spaces.Box(0, 1, (1,), dtype=np.float64)
         self.step_cost = 10 # step punishment in reward
-        self.max_iter = 500 # max iteration in one episode
 
     def reset(self):
         # reset Column Generation Algorithm
@@ -57,7 +58,7 @@ class CGEnv(gym.Env):
         reward = obj_before - obj_after - self.step_cost
         done = 0
         self.iter_cnt += 1
-        if CG_flag == 1 or self.iter_cnt >= self.max_iter:
+        if CG_flag == 1 or self.iter_cnt >= self.max_step:
             done = 1
         return state, reward, done, info
     
@@ -136,20 +137,12 @@ class CGWithSelection(ColumnGeneration.ColumnGenerationWithLabeling):
         else:
             self.labeling_routes = [self.labeling_routes[i] for i in range(len(self.labeling_routes)) if select_result[i]] 
 
-    def column_generation(self):
-        while True:
-            CG_flag = self.column_generation_before_selection()
-            if CG_flag != -1:
-                break
-            self.select_columns()
-            self.get_columns_and_add_into_RLMP()
-        return CG_flag
-
 
 if __name__ == "__main__":
     class Args:
         instance = "R101"
-        limit_node_num = None
+        limit_node_num = 30
+        max_step = 20
 
     args = Args()
     env = CGEnv(args)
@@ -161,14 +154,15 @@ if __name__ == "__main__":
         # test: randomly delete a column
         col_num = len(state)
         action = np.ones(col_num)
-        choose_delete = np.random.randint(col_num)
-        action[choose_delete] = 0
+        # choose_delete = np.random.randint(col_num)
+        # action[choose_delete] = 0
         state, reward, done, info = env.step(action)
         reward_list.append(reward)
-        print("Iter {}: delete column {}, reward = {}".format(iter_cnt, choose_delete, reward))
+        # print("Iter {}: delete column {}, reward = {}".format(iter_cnt, choose_delete, reward))
         if done:
             break
         iter_cnt += 1
+    print("total_reward = {}".format(sum(reward_list)))
     plt.plot(range(len(reward_list)), reward_list)
     plt.show()
 

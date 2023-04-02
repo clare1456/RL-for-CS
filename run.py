@@ -25,6 +25,7 @@ class Args:
         self.algo_name = "SAC"  # 算法名称
         self.instance = "R101" # 算例
         self.limit_node_num = 30 # 限制算例点的个数
+        self.max_step = 20 # CG最大迭代次数
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 检测GPU
         self.seed = 10 # 随机种子，置0则不设置随机种子
         self.train_eps = 200 # 训练的回合数
@@ -36,14 +37,13 @@ class Args:
         self.buffer_size = 10000 # replay buffer的大小
         self.minimal_size = 500 # 开始训练的最少数据量
         self.hidden_dim = 256 # 隐藏层大小
-        self.update_eps = 20 # 策略更新频率
+        self.update_steps = 10 # 策略更新频率
         self.gamma = 0.98  # 强化学习中的折扣因子
         self.tau = 0.005 # SAC软更新参数
         self.target_entropy = -1 # SAC目标熵
-        self.n_epochs = 4 # PPO每次update时学习的batch数
-        self.actor_lr = 1e-3 # actor的学习率
-        self.critic_lr = 1e-2 # critic的学习率
-        self.alpha_lr = 1e-2 # alpha的学习率
+        self.actor_lr = 1e-4 # actor的学习率
+        self.critic_lr = 1e-3 # critic的学习率
+        self.alpha_lr = 1e-3 # alpha的学习率
         ################################################################################
         
         ################################# 保存结果相关参数 ################################
@@ -63,15 +63,15 @@ if __name__ == "__main__":
     policy = Policy.SACPolicy(args)
     policy.share_memory()
     # 3. train policy
-    # Trainer.trainOffPolicy(policy, args, outputFlag=True)
-    processes = []
-    process_num = mp.cpu_count()
-    for pi in range(process_num):
-        p = mp.Process(target=Trainer.trainOffPolicy, args=(policy, args))
-        p.start()
-        processes.append(p) 
-    for p in processes:
-        p.join()
+    Trainer.trainOffPolicy(policy, args, outputFlag=True)
+    # processes = []
+    # process_num = mp.cpu_count()
+    # for pi in range(process_num):
+    #     p = mp.Process(target=Trainer.trainOffPolicy, args=(policy, args))
+    #     p.start()
+    #     processes.append(p) 
+    # for p in processes:
+    #     p.join()
     # 4. test
     Trainer.test(policy, args, outputFlag=True)
 
