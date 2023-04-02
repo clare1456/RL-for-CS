@@ -14,6 +14,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import Net
+import os
 
 class SACPolicy(nn.Module):
     def __init__(self, args):
@@ -102,16 +103,19 @@ class SACPolicy(nn.Module):
         self.soft_update(self.critic_2, self.target_critic_2) 
         
     def save(self, path):
+        # create dir if not exist
+        if not os.path.exists(path):
+            os.makedirs(path)
         torch.save(self.actor.state_dict(), path + 'actor.pth')
         torch.save(self.critic_1.state_dict(), path + 'critic_1.pth')
         torch.save(self.critic_2.state_dict(), path + 'critic_2.pth')
-        torch.save(self.optim.state_dict(), path + 'optim.pth')
+        torch.save(self.log_alpha, path + 'log_alpha.pth')
         
     def load(self, path):
         self.actor.load_state_dict(torch.load(path + 'actor.pth'))
         self.critic_1.load_state_dict(torch.load(path + 'critic_1.pth'))
         self.critic_2.load_state_dict(torch.load(path + 'critic_2.pth'))
-        self.optim.load_state_dict(torch.load(path + 'optim.pth'))
+        self.log_alpha.load_state_dict(torch.load(path + 'log_alpha.pth'))
     
 
 

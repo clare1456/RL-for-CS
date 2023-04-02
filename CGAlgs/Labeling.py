@@ -12,8 +12,9 @@ import GraphTool
 # import ModelHandler
 
 class Label():
-    def __init__(self, path, tabu, obj, q, t):
-        self.path = path # current route
+    def __init__(self, city, last_label, tabu, obj, q, t):
+        self.city = city # current city
+        self.last_label = last_label # last label
         self.tabu = tabu # can't visit point list
         self.obj = obj # objective value of label
         self.q = q # current load of route
@@ -69,7 +70,8 @@ class Labeling():
         """
         self.Q = [[] for i in range(self.graph.nodeNum)] # queue for each points, containing part-routes that ends in the point
         init_tabu = bitarray.bitarray(self.graph.nodeNum)
-        label0 = Label([0], init_tabu, 0, 0, 0)
+        init_tabu ^= init_tabu # set all zero
+        label0 = Label(0, None, init_tabu, 0, 0, 0)
         self.labelQueue = [label0] # queue for labels
         self.total_label_num = 1 # record
         self.last_label_num = 1 # record
@@ -120,11 +122,11 @@ class Labeling():
         update:
             self.Q (dict[int:List]): queue of node 
         """
-        node = label.path[-1] # node is the current point of label
+        node = label.city # node is the current point of label
         for next_node in self.graph.feasibleNodeSet[node]: # next_node: the next node
             if node == next_node: # avoid circulation
                 continue
-            if next_node in label.path[1:]: # avoid can't visit set
+            if label.tabu[next_node] == 1: # avoid can't visit set
                 continue
             q_ = label.q + self.graph.demand[next_node]
             t_arrive = label.t + self.graph.serviceTime[node] + self.graph.timeMatrix[node, next_node]
@@ -138,21 +140,27 @@ class Labeling():
                     continue
                 if obj_ < self.best_obj: # record best obj
                     self.best_obj = obj_
-            path_ = label.path.copy()
-            path_.append(next_node)
             tabu_ = label.tabu.copy()
             tabu_[next_node] = 1
             tabu_ = tabu_ | self.graph.infeasibleBitSet[next_node]
-            new_label = Label(path_, tabu_, obj_, q_, t_)
             start = time.time()
-            self.dominant_add(new_label, next_node) # add node and check dominance
+            new_label = Label(next_node, label, tabu_, obj_, q_, t_)
             self.timeRecord += time.time() - start
+            self.dominant_add(new_label, next_node) # add node and check dominance
     
+    # get route from label
+    def label2route(self, label):
+        route = []
+        while label is not None:
+            route.append(label.city)
+            label = label.last_label
+        return route[::-1]
+
     # output function
     def rank_result(self):
         pareto_labels = self.Q[0] 
         pareto_labels.sort(key=lambda label:label.obj)
-        routes = [label.path for label in pareto_labels]
+        routes = [self.label2route(label) for label in pareto_labels]
         objs = [label.obj for label in pareto_labels]
         return routes, objs
 

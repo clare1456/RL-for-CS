@@ -72,7 +72,9 @@ class Graph():
         self.feasibleNodeSet = [[] for _ in range(self.nodeNum)]
         self.availableNodeSet = [[] for _ in range(self.nodeNum)]
         self.infeasibleNodeSet = [[] for _ in range(self.nodeNum)]
-        self.infeasibleBitSet = [bitarray.bitarray(self.nodeNum) for _ in range(self.nodeNum)]
+        init_bitarray = bitarray.bitarray(self.nodeNum)
+        init_bitarray ^= init_bitarray
+        self.infeasibleBitSet = [init_bitarray.copy() for _ in range(self.nodeNum)]
         for i in range(self.nodeNum):
             for j in range(self.nodeNum):
                 if i == j:

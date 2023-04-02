@@ -186,8 +186,8 @@ class ColumnGeneration():
 class ColumnGenerationWithLabeling(ColumnGeneration):
     def __init__(self, graph, RLMP=None, column_pool=None):
         super().__init__(graph, RLMP=RLMP, SP=[], column_pool=column_pool) # no need to build SP
-        self.labeling = Labeling(graph, outputFlag=False)
-        # self.labeling = Labeling(graph, select_num=100, early_stop=1) # fast version
+        # self.labeling = Labeling(graph, outputFlag=False)
+        self.labeling = Labeling(graph, select_num=2*self.graph.nodeNum, early_stop=1, outputFlag=False) # fast version
 
     def solve_SP(self):
         """

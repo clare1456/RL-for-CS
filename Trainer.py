@@ -13,7 +13,7 @@ import random
 import torch
 import Env
 
-def trainOffPolicy(policy, args, outputFlag=False):
+def trainOffPolicy(policy, args, res_queue, outputFlag=False):
     """ 
     训练过程
     """
@@ -47,10 +47,12 @@ def trainOffPolicy(policy, args, outputFlag=False):
             step_cnt += 1
         ep_rewards.append(ep_reward)
         # output information
-        if outputFlag and (epi + 1) % args.output_eps == 0:
-            print("Episode {}/{}: avg_reward = {}"
-                    .format(epi+1, args.train_eps, 
-                            sum(ep_rewards[-args.output_eps:])/args.output_eps))
+        if (epi + 1) % args.output_eps == 0:
+            mean_reward = sum(ep_rewards[-args.output_eps:])/args.output_eps
+            res_queue.put(mean_reward)
+            if outputFlag:
+                print("Episode {}/{}: avg_reward = {}".format(epi+1, args.train_eps, mean_reward))
+    res_queue.put(None)
     if outputFlag:
         print("Training Finished!")
     return ep_rewards
