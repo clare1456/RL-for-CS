@@ -8,99 +8,91 @@ Created Date: Tuesday March 7th 2023
 '''
 
 from utils.baseImport import *
+import collections
+import random
+import torch
+import Env
 
-class Trainer():
-    def __init__(self, env, policy, memory, args):
-        self.env = env
-        self.policy = policy
-        self.memory = memory
-    
-    def train(self, args):
-        """ 
-        训练过程
-        """
-        ep_rewards = [] # 记录所有回合奖励
+def trainOffPolicy(policy, args, outputFlag=False):
+    """ 
+    训练过程
+    """
+    env = Env.CGEnv(args)
+    buffer = ReplayBuffer(args.buffer_size, args.batch_size)
+    critic_1_optim = torch.optim.Adam(policy.critic_1.parameters(), lr=args.critic_lr)
+    critic_2_optim = torch.optim.Adam(policy.critic_2.parameters(), lr=args.critic_lr)
+    actor_optim = torch.optim.Adam(policy.actor.parameters(), lr=args.actor_lr)
+    alpha_optim = torch.optim.Adam([policy.log_alpha], lr=args.alpha_lr)
+    ep_rewards = [] # 记录所有回合奖励
+    if outputFlag:
         print("\nTraining Begin!")
-        for epi in range(args.train_eps):
-            ep_reward = 0
-            # reset environment
-            obs, info = self.env.reset()
-            # interact until done
-            while True:
-                act, prob, val = self.policy(obs)
-                next_obs, rew, done, next_info = self.env.step(act)
-                self.memory.push(obs, act, prob, val, rew, done)
-                ep_reward += rew
-                if done:
-                    break
-                obs = next_obs
-                info = next_info
-            ep_rewards.append(ep_reward)
-            # update policy
-            if (epi + 1) % args.update_eps == 0:
-                self.policy.update()
-            # output information
-            if (epi + 1) % args.output_eps == 0:
-                print("Episode {}/{}: avg_reward = {}"
-                      .format(epi+1, args.train_eps, 
-                              sum(ep_rewards[-args.output_eps:])/args.output_eps))
+    for epi in range(args.train_eps):
+        ep_reward = 0
+        # reset environment
+        obs, info = env.reset()
+        # interact until done
+        while True:
+            act = policy(obs)
+            next_obs, rew, done, next_info = env.step(act)
+            buffer.add(obs, act, rew, next_obs, done)
+            ep_reward += rew
+            if done:
+                break
+            obs = next_obs
+            info = next_info
+        ep_rewards.append(ep_reward)
+        # update policy
+        if (epi + 1) % args.update_eps == 0:
+            policy.update(buffer, critic_1_optim, critic_2_optim, actor_optim, alpha_optim)
+        # output information
+        if outputFlag and (epi + 1) % args.output_eps == 0:
+            print("Episode {}/{}: avg_reward = {}"
+                    .format(epi+1, args.train_eps, 
+                            sum(ep_rewards[-args.output_eps:])/args.output_eps))
+    if outputFlag:
         print("Training Finished!")
-        return ep_rewards
-    
-    def test(self, args):
-        ep_rewards = [] # 记录所有回合奖励
+    return ep_rewards
+
+def test(policy, args, outputFlag=False):
+    """
+    测试过程
+    """
+    env = Env.CGEnv(args)
+    ep_rewards = [] # 记录所有回合奖励
+    if outputFlag:
         print("\nTesting Begin!")
-        for epi in range(args.test_eps):
-            ep_reward = 0
-            # reset environment
-            obs = self.env.reset()
-            # interact until done
-            while True:
-                act, prob, val = self.policy(obs)
-                next_obs, reward, done, info = self.env.step(act)
-                if done:
-                    break
-                obs = next_obs
-            ep_rewards.append(ep_reward)
-            # output information
-            if epi % args.output_eps == 0:
-                print("Episode {}/{}: avg_reward = {}"
-                      .format(epi, args.test_eps, 
-                              sum(ep_rewards[-args.output_eps:])/args.output_eps))
+    for epi in range(args.test_eps):
+        ep_reward = 0
+        # reset environment
+        obs, info = env.reset()
+        # interact until done
+        while True:
+            act = policy(obs)
+            next_obs, reward, done, info = env.step(act)
+            ep_reward += reward
+            if done:
+                break
+            obs = next_obs
+        ep_rewards.append(ep_reward)
+        # output information
+        if outputFlag:
+            print("Episode {}/{}: reward = {}".format(epi, args.test_eps, sum(ep_rewards)))
+    if outputFlag:
         print("Testing Finished!")
-        return ep_rewards
-            
-class PPOMemory:
-    def __init__(self, batch_size):
-        self.states = []
-        self.probs = []
-        self.vals = []
-        self.actions = []
-        self.rewards = []
-        self.dones = []
+    return ep_rewards
+
+class ReplayBuffer:
+    def __init__(self, buffer_size, batch_size):
+        self.buffer = collections.deque(maxlen=buffer_size) 
         self.batch_size = batch_size
 
-    def sample(self):
-        batch_step = np.arange(0, len(self.states), self.batch_size)
-        indices = np.arange(len(self.states), dtype=np.int64)
-        np.random.shuffle(indices)
-        batches = [indices[i:i+self.batch_size] for i in batch_step]
-        return self.states, self.actions, self.probs,\
-                np.array(self.vals), np.array(self.rewards), np.array(self.dones), batches
-                
-    def push(self, state, action, probs, vals, reward, done):
-        self.states.append(state)
-        self.actions.append(action)
-        self.probs.append(probs)
-        self.vals.append(vals)
-        self.rewards.append(reward)
-        self.dones.append(done)
+    def add(self, state, action, reward, next_state, done): 
+        self.buffer.append((state, action, reward, next_state, done)) 
 
-    def clear(self):
-        self.states = []
-        self.probs = []
-        self.actions = []
-        self.rewards = []
-        self.dones = []
-        self.vals = []
+    def sample(self): 
+        transitions = random.sample(self.buffer, self.batch_size)
+        state, action, reward, next_state, done = zip(*transitions)
+        return state, action, reward, next_state, done
 
+    def size(self): 
+        return len(self.buffer)

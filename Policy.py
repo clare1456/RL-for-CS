@@ -12,87 +12,107 @@ import numpy as np
 import math
 import torch
 import torch.nn as nn
-import torch.functional as F
+import torch.nn.functional as F
+import Net
 
-class PPOPolicy(nn.Module):
-    def __init__(self, actor, critic, optim, memory, args):
+class SACPolicy(nn.Module):
+    def __init__(self, args):
         super().__init__()
-        # objects
-        self.actor = actor
-        self.critic = critic
-        self.optim = optim
-        self.memory = memory
+        # trainable objects
+        net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=256)
+        self.actor = Net.Actor(net, hidden_dim=128, device=args.device).to(args.device)
+        self.critic_1 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
+        self.critic_2 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
+        self.target_critic_1 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
+        self.target_critic_2 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
+        self.target_critic_1.load_state_dict(state_dict=self.critic_1.state_dict())
+        self.target_critic_2.load_state_dict(state_dict=self.critic_2.state_dict())
+        self.log_alpha = torch.tensor(np.log(0.01), dtype=torch.float)
+        self.log_alpha.requires_grad = True
         # arguments
+        self.target_entropy = args.target_entropy
         self.gamma = args.gamma
-        self.policy_clip = args.policy_clip
-        self.n_epochs = args.n_epochs
-        self.gae_lambda = args.gae_lambda
+        self.tau = args.tau
         self.device = args.device
-        self.loss = 0
-    
+
     def forward(self, obs):
         obs = torch.FloatTensor(obs).to(self.device)
         column_num = len(obs)
         # 计算网络输出
         prob = self.actor(obs)
-        value = self.critic(obs).detach().numpy()
         # 处理输出结果
         act = np.zeros(column_num)
         for i in range(column_num):
             # 依概率选择1或0
             act[i] = np.random.random() < prob[i][1]
-        log_prob = torch.log(prob).detach().numpy() 
-        return act, log_prob, value
-
-    def update(self):
-        for epoch_i in range(self.n_epochs):
-            state_arr, action_arr, old_prob_arr, vals_arr,reward_arr, dones_arr, batches = self.memory.sample()
-            values = vals_arr[:]
-            ### compute advantage ###
-            advantage = np.zeros(len(reward_arr), dtype=np.float32)
-            for t in range(len(reward_arr)-1):
-                discount = 1
-                a_t = 0
-                for k in range(t, len(reward_arr)-1):
-                    a_t += discount*(reward_arr[k] + self.gamma*values[k+1]*\
-                            (1-int(dones_arr[k])) - values[k])
-                    discount *= self.gamma*self.gae_lambda
-                advantage[t] = a_t
-            advantage = torch.tensor(advantage).to(self.device)
-            ### SGD ###
-            values = torch.tensor(values).to(self.device)
-            for batch in batches:
-                self.loss = 0
-                for i in batch:
-                    state = torch.tensor(state_arr[i], dtype=torch.float).to(self.device)
-                    old_prob = torch.tensor(old_prob_arr[i]).to(self.device)
-                    action = torch.tensor(action_arr[i]).to(self.device)
-                    actor_prob = self.actor(state)
-                    critic_value = self.critic(state)
-                    critic_value = torch.squeeze(critic_value)
-                    new_prob = torch.log(actor_prob) 
-                    prob_ratio = new_prob.exp() / old_prob.exp()
-                    weighted_prob = advantage[i] * prob_ratio
-                    weighted_clipped_prob = torch.clamp(prob_ratio, 1-self.policy_clip,
-                            1+self.policy_clip)*advantage[i]
-                    actor_loss = -torch.min(weighted_prob, weighted_clipped_prob).mean()
-                    res = advantage[i] + values[i]
-                    critic_loss = (res-critic_value)**2
-                    critic_loss = critic_loss.mean()
-                    self.loss += actor_loss + 0.5*critic_loss
-                self.optim.zero_grad()
-                self.loss.backward()
-                self.optim.step()
-        self.memory.clear()  
+        return act
     
+    # 计算目标Q值,直接用策略网络的输出概率进行期望计算
+    def calc_target(self, reward, next_state, done):
+        next_prob = self.actor(next_state)
+        next_log_prob = torch.log(next_prob + 1e-8)
+        entropy = -torch.sum(next_prob * next_log_prob) 
+        q1_value = self.target_critic_1(next_state)
+        q2_value = self.target_critic_2(next_state)
+        min_qvalue = torch.sum(next_prob * torch.min(q1_value, q2_value))
+        next_value = min_qvalue + self.log_alpha.exp() * entropy
+        td_target = reward + self.gamma * next_value * (1 - done)
+        return td_target
+
+    def soft_update(self, net, target_net):
+        for param_target, param in zip(target_net.parameters(),
+                                       net.parameters()):
+            param_target.data.copy_(param_target.data * (1.0 - self.tau) +
+                                    param.data * self.tau)
+
+    def update(self, buffer, critic_1_optim, critic_2_optim, actor_optim, alpha_optim):
+        states, actions, rewards, next_states, dones = buffer.sample() 
+        
+        critic_1_optim.zero_grad()
+        critic_2_optim.zero_grad()
+        actor_optim.zero_grad()
+        alpha_optim.zero_grad()
+        for i in range(buffer.batch_size):
+            # critic loss
+            td_target = self.calc_target(rewards[i], next_states[i], dones[i])
+            critic_1_q_value = torch.sum(self.critic_1(states[i])[range(len(actions[i])), actions[i]]) 
+            critic_1_loss = F.mse_loss(critic_1_q_value, td_target.detach())
+            critic_1_loss.backward()
+            critic_2_q_value = torch.sum(self.critic_2(states[i])[range(len(actions[i])), actions[i]]) 
+            critic_2_loss = F.mse_loss(critic_2_q_value, td_target.detach())
+            critic_2_loss.backward()
+            # actor loss
+            prob = self.actor(states[i])
+            log_prob = torch.log(prob + 1e-8)
+            entropy = -torch.sum(prob * log_prob) 
+            q1_value = self.critic_1(states[i])
+            q2_value = self.critic_2(states[i])
+            min_qvalue = torch.sum(prob * torch.min(q1_value, q2_value)) 
+            actor_loss = torch.mean( - self.log_alpha.exp() * log_prob * entropy - min_qvalue)
+            actor_loss.backward()
+            # alpha loss
+            alpha_loss = torch.mean((entropy - self.target_entropy).detach() * self.log_alpha.exp())
+            alpha_loss.backward()
+        # optimize
+        critic_1_optim.step()
+        critic_2_optim.step()
+        actor_optim.step()
+        alpha_optim.step()
+
+        # soft update target network
+        self.soft_update(self.critic_1, self.target_critic_1) 
+        self.soft_update(self.critic_2, self.target_critic_2) 
+        
     def save(self, path):
         torch.save(self.actor.state_dict(), path + 'actor.pth')
-        torch.save(self.critic.state_dict(), path + 'critic.pth')
+        torch.save(self.critic_1.state_dict(), path + 'critic_1.pth')
+        torch.save(self.critic_2.state_dict(), path + 'critic_2.pth')
         torch.save(self.optim.state_dict(), path + 'optim.pth')
         
     def load(self, path):
         self.actor.load_state_dict(torch.load(path + 'actor.pth'))
-        self.critic.load_state_dict(torch.load(path + 'critic.pth'))
+        self.critic_1.load_state_dict(torch.load(path + 'critic_1.pth'))
+        self.critic_2.load_state_dict(torch.load(path + 'critic_2.pth'))
         self.optim.load_state_dict(torch.load(path + 'optim.pth'))
     
 

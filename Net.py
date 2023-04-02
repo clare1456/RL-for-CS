@@ -79,7 +79,7 @@ class Critic(nn.Module):
         self.device = device
         self.preprocess = preprocess_net
         self.input_dim = self.preprocess.embed_dim
-        self.output_dim = 1
+        self.output_dim = 2
         self.hidden_dim = hidden_dim
         self.last = MLP(
             self.input_dim,  
@@ -93,8 +93,7 @@ class Critic(nn.Module):
     ) -> torch.Tensor:
         """Mapping: s -> V(s)."""
         embeddings = self.preprocess(obs)
-        value = torch.sum(self.last(embeddings)) #? 求和是否合适
-        return value
+        return self.last(embeddings)
     
 
 class ActorCritic(nn.Module):

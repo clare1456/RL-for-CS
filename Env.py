@@ -16,7 +16,9 @@ import gymnasium as gym
 
 
 class CGEnv(gym.Env):
-    def __init__(self, instance, limit_node_num=None):
+    def __init__(self, args):
+        instance = args.instance
+        limit_node_num = args.limit_node_num
         file_path = "problems\{}.txt".format(instance)
         self.graph = GraphTool.Graph(file_path, limit_node_num)
         self.CGAlg = CGWithSelection(self.graph)
@@ -24,6 +26,7 @@ class CGEnv(gym.Env):
         self.observation_space = gym.spaces.Box(-np.inf, np.inf, (1,), dtype=np.float64)
         self.action_space = gym.spaces.Box(0, 1, (1,), dtype=np.float64)
         self.step_cost = 10 # step punishment in reward
+        self.max_iter = 500 # max iteration in one episode
 
     def reset(self):
         # reset Column Generation Algorithm
@@ -34,6 +37,7 @@ class CGEnv(gym.Env):
         # get state from alg
         info = self.CGAlg.get_column_selection_info()
         state = np.array(info["columns_state"], dtype=np.float64)
+        self.iter_cnt = 0
         # update action_space, observation_space
         self.observation_space = gym.spaces.Box(-np.inf, np.inf, state.shape, dtype=np.float64)
         self.action_space = gym.spaces.Box(0, 1, (len(state),), dtype=np.float64)
@@ -52,7 +56,8 @@ class CGEnv(gym.Env):
         state = info["columns_state"]
         reward = obj_before - obj_after - self.step_cost
         done = 0
-        if CG_flag == 1:
+        self.iter_cnt += 1
+        if CG_flag == 1 or self.iter_cnt >= self.max_iter:
             done = 1
         return state, reward, done, info
     
@@ -142,8 +147,12 @@ class CGWithSelection(ColumnGeneration.ColumnGenerationWithLabeling):
 
 
 if __name__ == "__main__":
-    instance = "R101"
-    env = CGEnv(instance)
+    class Args:
+        instance = "R101"
+        limit_node_num = None
+
+    args = Args()
+    env = CGEnv(args)
 
     state, info = env.reset()
     iter_cnt = 0
