@@ -9,7 +9,7 @@ Created Date: Tuesday March 7th 2023
 
 
 import sys
-sys.path.append("D:\Code\RL4CS\CGAlgs")
+sys.path.append("CGAlgs")
 from utils.baseImport import *
 from CGAlgs import GraphTool, ColumnGeneration
 import gymnasium as gym

@@ -62,6 +62,7 @@ class PPOPolicy(nn.Module):
             ### SGD ###
             values = torch.tensor(values).to(self.device)
             for batch in batches:
+                self.loss = 0
                 for i in batch:
                     state = torch.tensor(state_arr[i], dtype=torch.float).to(self.device)
                     old_prob = torch.tensor(old_prob_arr[i]).to(self.device)
@@ -80,6 +81,7 @@ class PPOPolicy(nn.Module):
                     critic_loss = critic_loss.mean()
                     self.loss += actor_loss + 0.5*critic_loss
                 self.optim.zero_grad()
+                self.loss.backward()
                 self.optim.step()
         self.memory.clear()  
     
