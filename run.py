@@ -16,12 +16,8 @@ import Trainer
 import torch
 import datetime
 import os
-import tianshou as ts
-from tianshou.env import DummyVectorEnv
-from tianshou.data import VectorReplayBuffer
-from tianshou.trainer import onpolicy_trainer, OnpolicyTrainer
 from torch.utils.tensorboard import SummaryWriter
-from tianshou.utils import TensorboardLogger
+import torch.multiprocessing as mp
 
 class Args:
     def __init__(self) -> None:
@@ -65,8 +61,17 @@ if __name__ == "__main__":
     args = Args()
     # 2. build global Policy
     policy = Policy.SACPolicy(args)
+    policy.share_memory()
     # 3. train policy
-    Trainer.trainOffPolicy(policy, args, outputFlag=True)
+    # Trainer.trainOffPolicy(policy, args, outputFlag=True)
+    processes = []
+    process_num = mp.cpu_count()
+    for pi in range(process_num):
+        p = mp.Process(target=Trainer.trainOffPolicy, args=(policy, args))
+        p.start()
+        processes.append(p) 
+    for p in processes:
+        p.join()
     # 4. test
     Trainer.test(policy, args, outputFlag=True)
 

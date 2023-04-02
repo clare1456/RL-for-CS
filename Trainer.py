@@ -76,7 +76,7 @@ def test(policy, args, outputFlag=False):
         ep_rewards.append(ep_reward)
         # output information
         if outputFlag:
-            print("Episode {}/{}: reward = {}".format(epi, args.test_eps, sum(ep_rewards)))
+            print("Episode {}/{}: reward = {}".format(epi, args.test_eps, ep_reward))
     if outputFlag:
         print("Testing Finished!")
     return ep_rewards
