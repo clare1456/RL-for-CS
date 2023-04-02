@@ -48,6 +48,7 @@ class ColumnGeneration():
         # display part
         self.cg_iter_cnt = 0
         self.OutputFlag = 1
+        self.timeRecord = 0
     
     def solve_RLMP_and_get_duals(self):
         """
@@ -158,7 +159,9 @@ class ColumnGeneration():
             if is_feasible != 1:
                 return 0
             # solve SP
+            time1 = time.time()
             self.solve_SP()
+            self.timeRecord += time.time() - time1
             # record information
             self.cg_iter_cnt += 1
             self.output_info()
@@ -223,4 +226,5 @@ if __name__ == "__main__":
     routes = alg.run()
     obj = graph.evaluate(routes)
     print("obj = {}".format(obj))
-    graph.render(routes)
+    print("timeRecord = {}".format(alg.timeRecord))
+    # graph.render(routes)

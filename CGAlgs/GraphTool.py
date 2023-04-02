@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+import bitarray
 
 class Graph():
     def __init__(self, file_name, limit_node_num = None):
@@ -71,6 +72,7 @@ class Graph():
         self.feasibleNodeSet = [[] for _ in range(self.nodeNum)]
         self.availableNodeSet = [[] for _ in range(self.nodeNum)]
         self.infeasibleNodeSet = [[] for _ in range(self.nodeNum)]
+        self.infeasibleBitSet = [bitarray.bitarray(self.nodeNum) for _ in range(self.nodeNum)]
         for i in range(self.nodeNum):
             for j in range(self.nodeNum):
                 if i == j:
@@ -80,6 +82,7 @@ class Graph():
                     self.availableNodeSet[j].append(i)
                 else:
                     self.infeasibleNodeSet[i].append(j)
+                    self.infeasibleBitSet[i][j] = 1
        
     def evaluate(self, routes, show=False, info = {}):
         obj = 0
