@@ -28,7 +28,7 @@ class Args:
         self.max_step = 30 # CG最大迭代次数
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 检测GPU
         self.seed = 10 # 随机种子，置0则不设置随机种子
-        self.process_num = 5  # 每次训练的进程数
+        self.process_num = 10  # 每次训练的进程数
         self.train_eps = 200 # 训练的回合数
         self.test_eps = 10 # 测试的回合数
         ################################################################################

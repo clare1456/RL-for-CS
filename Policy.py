@@ -16,9 +16,22 @@ import torch.nn.functional as F
 import Net
 import os
 
-class SACPolicy(nn.Module):
+class basePolicy(nn.Module):
     def __init__(self, args):
         super().__init__()
+    
+    def forward(self, obs):
+        raise NotImplementedError
+
+    def save(self, path):
+        raise NotImplementedError
+
+    def load(self, path):
+        raise NotImplementedError
+
+class SACPolicy(basePolicy):
+    def __init__(self, args):
+        super(SACPolicy, self).__init__()
         # trainable objects
         net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=256)
         # net = Net.GAT_EFA_Net(nfeat=3+args.limit_node_num, nedgef=5, embed_dim=128)
@@ -118,6 +131,9 @@ class SACPolicy(nn.Module):
         self.critic_2.load_state_dict(torch.load(path + 'critic_2.pth'))
         self.log_alpha.load_state_dict(torch.load(path + 'log_alpha.pth'))
     
-
+class PPOPolicy(basePolicy):
+    def __init__(self, args):
+        super(PPOPolicy, self).__init__()
+        #todo
 
 
