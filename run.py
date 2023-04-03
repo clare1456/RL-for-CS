@@ -67,16 +67,18 @@ if __name__ == "__main__":
     res_queue = mp.Queue()
     # Trainer.trainOffPolicy(policy, args, res_queue, outputFlag=True, seed=1)
     processes = []
-    process_num = args.process_num
-    for pi in range(process_num):
+    for pi in range(args.process_num):
         p = mp.Process(target=Trainer.trainOffPolicy, args=(policy, args, res_queue, False, pi+1))
         p.start()
         processes.append(p)
     res = []
+    end_process = 0
     while True:
         r = res_queue.get()
         if r is None:
-            break
+            end_process += 1
+            if end_process >= args.process_num:
+                break
         else:
             res.append(r)
             if len(res) % args.output_eps == 0:
