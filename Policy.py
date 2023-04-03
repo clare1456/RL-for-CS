@@ -21,6 +21,7 @@ class SACPolicy(nn.Module):
         super().__init__()
         # trainable objects
         net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=256)
+        # net = Net.GAT_EFA_Net(nfeat=3+args.limit_node_num, nedgef=5, embed_dim=128)
         self.actor = Net.Actor(net, hidden_dim=128, device=args.device).to(args.device)
         self.critic_1 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
         self.critic_2 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)

@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+import json
 import bitarray
 
 class Graph():
@@ -13,9 +14,6 @@ class Graph():
     def read_data(self, file_name, limit_node_num):
         """
         read VRPTW data from dataset
-        input: file_name
-        output: problem object (including (int)vehicleNum, (int capacity, (numpy-array[25, 6])customers)
-                ps:customers include x, y, demand, ready_time, due_time, service_time
         """
         with open(file_name) as file_object:
             lines = file_object.readlines()
@@ -147,9 +145,6 @@ class GraphForAugerat(Graph):
     def read_data(self, file_name):
         """
         read VRPTW data from Augerat dataset
-        input: file_name
-        output: problem object (including (int)vehicleNum, (int) capacity, (numpy-array[25, 6])customers)
-                ps:customers include x, y, demand
         """
         with open(file_name) as file_object:
             lines = file_object.readlines()
@@ -177,31 +172,10 @@ class GraphForAugerat(Graph):
         self.nodeNum = len(self.location)
         self.cal_disMatrix()
 
+
 if __name__ == "__main__":
     file_name = "solomon_100/r101.txt"
     graph = Graph(file_name)
+
     # file_name = "Augerat/A-n32-k5.vrp"
     # graph = GraphForAugerat(file_name)
-
-    routes = [
-        [0, 2, 21, 73, 41, 56, 4, 0], 
-        [0, 5, 83, 61, 85, 37, 93, 0], 
-        [0, 14, 44, 38, 43, 13, 0], 
-        [0, 27, 69, 76, 79, 3, 54, 24, 80, 0], 
-        [0, 28, 12, 40, 53, 26, 0], 
-        [0, 30, 51, 9, 66, 1, 0], 
-        [0, 31, 88, 7, 10, 0], 
-        [0, 33, 29, 78, 34, 35, 77, 0], 
-        [0, 36, 47, 19, 8, 46, 17, 0], 
-        [0, 39, 23, 67, 55, 25, 0], 
-        [0, 45, 82, 18, 84, 60, 89, 0], 
-        [0, 52, 6, 0], 
-        [0, 59, 99, 94, 96, 0], 
-        [0, 62, 11, 90, 20, 32, 70, 0], 
-        [0, 63, 64, 49, 48, 0], 
-        [0, 65, 71, 81, 50, 68, 0], 
-        [0, 72, 75, 22, 74, 58, 0], 
-        [0, 92, 42, 15, 87, 57, 97, 0], 
-        [0, 95, 98, 16, 86, 91, 100, 0], 
-    ]
-    print("value: {}".format(graph.evaluate(routes)))

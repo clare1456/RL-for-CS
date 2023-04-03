@@ -13,10 +13,14 @@ import random
 import torch
 import Env
 
-def trainOffPolicy(policy, args, res_queue, outputFlag=False):
+def trainOffPolicy(policy, args, res_queue, outputFlag=False, seed=0):
     """ 
     训练过程
     """
+    if seed != 0:
+        torch.manual_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
     env = Env.CGEnv(args)
     buffer = ReplayBuffer(args.buffer_size, args.batch_size)
     critic_1_optim = torch.optim.Adam(policy.critic_1.parameters(), lr=args.critic_lr)
