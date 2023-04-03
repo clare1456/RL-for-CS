@@ -31,7 +31,7 @@ class basePolicy(nn.Module):
 
 class SACPolicy(basePolicy):
     def __init__(self, args):
-        super(SACPolicy, self).__init__()
+        super(SACPolicy, self).__init__(args)
         # trainable objects
         net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=256)
         # net = Net.GAT_EFA_Net(nfeat=3+args.limit_node_num, nedgef=5, embed_dim=128)
@@ -133,7 +133,7 @@ class SACPolicy(basePolicy):
     
 class PPOPolicy(basePolicy):
     def __init__(self, args):
-        super(PPOPolicy, self).__init__()
+        super(PPOPolicy, self).__init__(args)
         #todo
 
 
