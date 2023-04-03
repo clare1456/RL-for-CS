@@ -158,7 +158,7 @@ class GAT_EFA_Net(GAT_EFA):
             x = mid + x  #residual connections
             x = self.dropout(x)
         
-        #last hidden layer
+        # last hidden layer
         x = torch.mean(torch.stack([att(x, edge_feats, adj) for att in self.attentions[self.nlayer-1]]), 0)
         x = self.relu(x)  #h_i=δ(avg(∑ α_ij·Wh·h_j))
         x = self.dropout(x)
@@ -166,7 +166,7 @@ class GAT_EFA_Net(GAT_EFA):
         x = self.relu(self.x_weight1(x)) 
         x = self.relu(self.x_weight2(x.squeeze(-1))) 
         x = self.dropout(x)
-        #  column features
+        # column features
         x_reduced_cost = reduced_cost.repeat(1,self.feature_gain) 
         x_distance = distance.repeat(1,self.feature_gain) 
         x_path = self.relu(self.path_embedding(path_onehot))
