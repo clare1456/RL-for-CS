@@ -70,6 +70,7 @@ class Graph():
         self.feasibleNodeSet = [[] for _ in range(self.nodeNum)]
         self.availableNodeSet = [[] for _ in range(self.nodeNum)]
         self.infeasibleNodeSet = [[] for _ in range(self.nodeNum)]
+        self.adj = np.zeros((self.nodeNum, self.nodeNum))
         init_bitarray = bitarray.bitarray(self.nodeNum)
         init_bitarray ^= init_bitarray
         self.infeasibleBitSet = [init_bitarray.copy() for _ in range(self.nodeNum)]
@@ -80,6 +81,7 @@ class Graph():
                 if self.readyTime[i] + self.serviceTime[i] + self.timeMatrix[i, j] <= self.dueTime[j]:
                     self.feasibleNodeSet[i].append(j)
                     self.availableNodeSet[j].append(i)
+                    self.adj[i][j] = 1
                 else:
                     self.infeasibleNodeSet[i].append(j)
                     self.infeasibleBitSet[i][j] = 1
