@@ -24,16 +24,17 @@ class Args:
         ################################## 环境超参数 ###################################
         self.algo_name = "SAC"  # 算法名称
         self.instance = "R101" # 算例
-        self.limit_node_num = 101 # 限制算例点的个数
-        self.max_step = 30 # CG最大迭代次数
+        self.limit_node_num = 30 # 限制算例点的个数
+        self.max_step = 20 # CG最大迭代次数
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 检测GPU
         self.seed = 10 # 随机种子，置0则不设置随机种子
         self.process_num = 10  # 每次训练的进程数
-        self.train_eps = 20 # 训练的回合数
+        self.train_eps = 200 # 训练的回合数
         self.test_eps = 10 # 测试的回合数
         ################################################################################
         
         ################################## 算法超参数 ####################################
+        self.net = "GAT" # GAT / MHA 选择 embedding 网络
         self.batch_size = 5*self.max_step  # 每次训练的batch大小
         self.buffer_size = 200*self.max_step # replay buffer的大小
         self.minimal_size = 10*self.max_step # 开始训练的最少数据量
@@ -65,20 +66,18 @@ if __name__ == "__main__":
     policy.share_memory()
     # 3. train policy
     res_queue = mp.Queue()
-    # Trainer.trainOffPolicy(policy, args, res_queue, outputFlag=True, seed=1)
+    Trainer.trainOffPolicy(policy, args, res_queue, outputFlag=True, seed=1)
     processes = []
-    for pi in range(args.process_num):
+    process_num = args.process_num
+    for pi in range(process_num):
         p = mp.Process(target=Trainer.trainOffPolicy, args=(policy, args, res_queue, False, pi+1))
         p.start()
         processes.append(p)
     res = []
-    end_process = 0
     while True:
         r = res_queue.get()
         if r is None:
-            end_process += 1
-            if end_process >= args.process_num:
-                break
+            break
         else:
             res.append(r)
             if len(res) % args.output_eps == 0:

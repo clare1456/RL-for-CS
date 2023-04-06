@@ -13,12 +13,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class MHA(nn.Module):
-    def __init__(self, input_dim: int, embed_dim: int, hidden_dim : int):
+    def __init__(self, input_dim: int, embed_dim: int, hidden_dim : int, device : str = "cpu"):
         super(MHA, self).__init__()
         # for read
         self.input_dim = input_dim
         self.embed_dim = embed_dim
         self.hidden_dim = hidden_dim
+        self.device = device
         # MHA encoder
         self.encoder = GraphAttentionEncoder(
             n_heads=8, 
@@ -28,7 +29,8 @@ class MHA(nn.Module):
             feed_forward_hidden=hidden_dim, 
         )
     
-    def forward(self, obs, info={}):
+    def forward(self, state, info={}):
+        obs = torch.FloatTensor(state["columns_state"]).to(self.device)
         if isinstance(obs, torch.Tensor) == False:
             obs = torch.FloatTensor(obs) 
         embeddings =  self.encoder(obs)

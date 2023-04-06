@@ -47,11 +47,12 @@ class CGWithSelection(ColumnGenerationWithLabeling):
         constraints_state = []
         for ni in range(self.graph.nodeNum):
             dual_value = self.duals_of_RLMP[f"R{ni}"]
+            coor_x, coor_y = self.graph.location[ni]
             demand = self.graph.demand[ni]
             ready_time = self.graph.readyTime[ni]
             due_time = self.graph.dueTime[ni]
             service_time = self.graph.serviceTime[ni]
-            state = [dual_value, demand, ready_time, due_time, service_time] # dim = (len(constraints), 5)
+            state = [coor_x, coor_y, ready_time, due_time, demand, dual_value] # dim = (len(constraints), 6)
             constraints_state.append(state)
         """ get edge_index of columns and constraints """ 
         edge_index = [[], []]
@@ -62,7 +63,9 @@ class CGWithSelection(ColumnGenerationWithLabeling):
         info = {
             "columns_state" : np.array(columns_state), 
             "constraints_state" : np.array(constraints_state), 
-            "edge_index" : np.array(edge_index)
+            "edge_index" : np.array(edge_index), 
+            "dismatrix" : self.graph.disMatrix, 
+            "adj" : self.graph.adjMatrix, 
         }
         return info
 

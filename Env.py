@@ -25,8 +25,6 @@ class CGEnv(gym.Env):
         self.graph = GraphTool.Graph(file_path, limit_node_num)
         self.CGAlg = CGWithSelection(self.graph)
         # action_space, observation_space updates 
-        self.observation_space = gym.spaces.Box(-np.inf, np.inf, (1,), dtype=np.float64)
-        self.action_space = gym.spaces.Box(0, 1, (1,), dtype=np.float64)
         self.step_cost = 10 # step punishment in reward
 
     def reset(self):
@@ -36,12 +34,9 @@ class CGEnv(gym.Env):
         CG_flag = self.CGAlg.column_generation_before_selection()
         assert CG_flag == -1, "ERROR: Column Generation finished in 0 step"
         # get state from alg
-        info = self.CGAlg.get_column_selection_info()
-        state = np.array(info["columns_state"], dtype=np.float64)
+        state = self.CGAlg.get_column_selection_info()
+        info = {}
         self.iter_cnt = 0
-        # update action_space, observation_space
-        self.observation_space = gym.spaces.Box(-np.inf, np.inf, state.shape, dtype=np.float64)
-        self.action_space = gym.spaces.Box(0, 1, (len(state),), dtype=np.float64)
         return state, info
 
     def step(self, action: np.ndarray):
@@ -53,8 +48,8 @@ class CGEnv(gym.Env):
         CG_flag = self.CGAlg.column_generation_before_selection()
         obj_after = self.CGAlg.RLMP_obj
         """ get state, reward, done, info """
-        info = self.CGAlg.get_column_selection_info()
-        state = info["columns_state"]
+        state = self.CGAlg.get_column_selection_info()
+        info = {}
         reward = obj_before - obj_after - self.step_cost
         done = 0
         self.iter_cnt += 1
@@ -109,22 +104,25 @@ class CGWithSelection(ColumnGeneration.ColumnGenerationWithLabeling):
         constraints_state = []
         for ni in range(self.graph.nodeNum):
             dual_value = self.duals_of_RLMP[f"R{ni}"]
+            coor_x, coor_y = self.graph.location[ni]
             demand = self.graph.demand[ni]
             ready_time = self.graph.readyTime[ni]
             due_time = self.graph.dueTime[ni]
             service_time = self.graph.serviceTime[ni]
-            state = [dual_value, demand, ready_time, due_time, service_time] # dim = (len(constraints), 5)
+            state = [coor_x, coor_y, ready_time, due_time, demand, dual_value] # dim = (len(constraints), 6)
             constraints_state.append(state)
         """ get edge_index of columns and constraints """ 
         edge_index = [[], []]
         for ri in range(len(routes)):
             for ni in routes[ri][1:]:
                 edge_index[0].append(ri) # dim = (2, len(columns) * len(constraints))
-                edge_index[1].append(ni+len(routes)) # ! make idxs different from columns'
+                edge_index[1].append(ni+len(routes)) 
         info = {
             "columns_state" : np.array(columns_state), 
             "constraints_state" : np.array(constraints_state), 
-            "edge_index" : np.array(edge_index)
+            "edge_index" : np.array(edge_index), 
+            "dismatrix" : self.graph.disMatrix, 
+            "adj" : self.graph.adjMatrix, 
         }
         return info
 

@@ -33,7 +33,10 @@ class SACPolicy(basePolicy):
     def __init__(self, args):
         super(SACPolicy, self).__init__(args)
         # trainable objects
-        net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=256)
+        if args.net == "MHA":
+            net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=256)
+        elif args.net == "GAT":
+            net = Net.GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, maxNodeNum=args.limit_node_num)
         # net = Net.GAT_EFA_Net(nfeat=3+args.limit_node_num, nedgef=5, embed_dim=128)
         self.actor = Net.Actor(net, hidden_dim=128, device=args.device).to(args.device)
         self.critic_1 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
@@ -50,11 +53,10 @@ class SACPolicy(basePolicy):
         self.tau = args.tau
         self.device = args.device
 
-    def forward(self, obs):
-        obs = torch.FloatTensor(obs).to(self.device)
-        column_num = len(obs)
+    def forward(self, state):
+        column_num = len(state["columns_state"])
         # 计算网络输出
-        prob = self.actor(obs)
+        prob = self.actor(state)
         # 处理输出结果
         act = np.zeros(column_num)
         for i in range(column_num):

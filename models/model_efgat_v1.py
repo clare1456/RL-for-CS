@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-
+import sys
+sys.path.append("CGAlgs")
 
 class GAT_EFA(nn.Module):
     def __init__(self, nfeat, nedgef, nhid=64, nclass=2, dropout=0.1, 
@@ -117,7 +117,7 @@ class GAT_EFA(nn.Module):
 class GAT_EFA_Net(GAT_EFA):
     def __init__(self, nfeat, nedgef, embed_dim, nhid=64, nclass=2, dropout=0.1, 
                  alpha=0.2, nheads=8, noutheads=4, nlayer=2,
-                 feature_gain=10,maxNodeNum=20):
+                 feature_gain=10,maxNodeNum=20, device="cpu"):
         """Dense version of GAT.
             nfeat  N*F
             nedgef  N*N*F
@@ -125,12 +125,27 @@ class GAT_EFA_Net(GAT_EFA):
         super(GAT_EFA_Net, self).__init__(nfeat, nedgef, nhid, nclass, dropout,
                  alpha, nheads, noutheads, nlayer,
                  feature_gain,maxNodeNum)
+        self.device = device
         # redefine output layer
+        self.embed_dim = embed_dim
         self.out_layer = nn.Linear(nhid*4, embed_dim)
   
-    def forward(self,x_loc,x_tw,x_d,dismatrix,adj,x_dual,reduced_cost,distance,path_onehot):
+    def forward(self, state):
+        # read data from state
+        columns_state = torch.FloatTensor(state["columns_state"]).to(self.device)
+        constraints_state = torch.FloatTensor(state["constraints_state"]).to(self.device)
+        dismatrix = torch.FloatTensor(state["dismatrix"]).to(self.device)
+        adj = torch.FloatTensor(state["adj"]).to(self.device)
         # x_c, x_tw, x_d, x_disMatrix, x_adj  = x_graph
+        batch = len(columns_state)
+        x_loc = constraints_state[:, 0:2][None].repeat(batch, 1, 1) #!check
+        x_tw = constraints_state[:, 2:4][None].repeat(batch, 1, 1) #!check
+        x_d = constraints_state[:, 4:5][None].repeat(batch, 1, 1) #!check
+        x_dual = constraints_state[:, 5:6][None].repeat(batch, 1, 1) #!check
         # dim,obj,distance,path,dualValue = x_column
+        reduced_cost = columns_state[:, 0:1]
+        distance = columns_state[:, 1:2]
+        path_onehot = columns_state[:, 3:]
         # graph features
         x_loc = x_loc.repeat(1,1,self.feature_gain) # 特征增强
         x_tw = x_tw.repeat(1,1,self.feature_gain)
@@ -260,21 +275,43 @@ class GraphAttentionLayer_EFA(nn.Module):
 
 
 if __name__ ==  '__main__':
+    """ test 1 """
+    # import random
+    # nodeNum = 20
+    # batch = 8
+    # x_c = torch.randn(nodeNum*2*batch).reshape(batch,nodeNum,2)
+    # x_tw = torch.randn(nodeNum*2*batch).reshape(batch,nodeNum,2)
+    # x_d = torch.randn(nodeNum*batch).reshape(batch,nodeNum,1)
+    # x_dual = torch.randn(nodeNum*batch).reshape(batch,nodeNum,1)
+    # dismatrix = torch.randn(nodeNum**2*batch).reshape(batch,nodeNum, nodeNum)
+    # adj = torch.randn(nodeNum**2*batch).reshape(batch,nodeNum, -1)
+    # reduced_cost = torch.randn(1*batch).reshape(batch,1)
+    # distance = torch.randn(1*batch).reshape(batch,1)
+    # path_onehot = torch.randint(0,2,(nodeNum*batch,1),dtype=torch.float32).reshape(batch,nodeNum)
+
+    # model = GAT_EFA(nfeat=128, nedgef=128)
+    # res = model(x_c,x_tw,x_d,dismatrix,adj,x_dual,reduced_cost,distance,path_onehot)
+    # print(res)
+    # print(res.shape)
+    """ test 2 """
     import random
-    nodeNum = 20
+    nodeNum = 30
     batch = 8
-    x_c = torch.randn(nodeNum*2*batch).reshape(batch,nodeNum,2)
-    x_tw = torch.randn(nodeNum*2*batch).reshape(batch,nodeNum,2)
-    x_d = torch.randn(nodeNum*batch).reshape(batch,nodeNum,1)
-    x_dual = torch.randn(nodeNum*batch).reshape(batch,nodeNum,1)
+    columns_state = torch.randn((3+nodeNum)*batch).reshape(batch,3+nodeNum)
+    constraints_state = torch.randn(6*nodeNum).reshape(nodeNum,6)
     dismatrix = torch.randn(nodeNum**2*batch).reshape(batch,nodeNum, nodeNum)
-    adj = torch.randn(nodeNum**2*batch).reshape(batch,nodeNum, -1)
+    adj = torch.randn(nodeNum**2*batch).reshape(batch,nodeNum, nodeNum)
     reduced_cost = torch.randn(1*batch).reshape(batch,1)
     distance = torch.randn(1*batch).reshape(batch,1)
-    path_onehot = torch.randint(0,2,(nodeNum*batch,1),dtype=torch.float32).reshape(batch,nodeNum)
+    state = {
+        "dismatrix" : dismatrix, 
+        "adj" : adj, 
+        "columns_state" : columns_state, 
+        "constraints_state" : constraints_state, 
+    }
 
-    model = GAT_EFA(nfeat=128, nedgef=128)
-    res = model(x_c,x_tw,x_d,dismatrix,adj,x_dual,reduced_cost,distance,path_onehot)
+    model = GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, maxNodeNum=nodeNum)
+    res = model(state)
     print(res)
     print(res.shape)
     

@@ -38,11 +38,11 @@ class Actor(nn.Module):
 
     def forward(
         self,
-        obs: Union[np.ndarray, torch.Tensor],
+        state: Union[np.ndarray, torch.Tensor],
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
-        embeddings = self.preprocess(obs)
+        embeddings = self.preprocess(state)
         logits = self.last(embeddings)
         probs = F.softmax(logits, dim=-1) 
         return probs
@@ -69,10 +69,10 @@ class Critic(nn.Module):
         )
 
     def forward(
-        self, obs: Union[np.ndarray, torch.Tensor], **kwargs: Any
+        self, state: Union[np.ndarray, torch.Tensor], **kwargs: Any
     ) -> torch.Tensor:
         """Mapping: s -> V(s)."""
-        embeddings = self.preprocess(obs)
+        embeddings = self.preprocess(state)
         return self.last(embeddings)
     
 

@@ -34,16 +34,16 @@ def trainOffPolicy(policy, args, res_queue, outputFlag=False, seed=0):
     for epi in range(args.train_eps):
         ep_reward = 0
         # reset environment
-        obs, info = env.reset()
+        state, info = env.reset()
         # interact until done
         while True:
-            act = policy(obs)
-            next_obs, rew, done, next_info = env.step(act)
-            buffer.add(obs, act, rew, next_obs, done)
+            act = policy(state)
+            next_state, rew, done, next_info = env.step(act)
+            buffer.add(state, act, rew, next_state, done)
             ep_reward += rew
             if done:
                 break
-            obs = next_obs
+            state = next_state
             info = next_info
             # update policy
             if (step_cnt + 1) % args.update_steps == 0 and buffer.size() >= args.minimal_size:
@@ -73,15 +73,15 @@ def test(policy, args, outputFlag=False):
     for epi in range(args.test_eps):
         ep_reward = 0
         # reset environment
-        obs, info = env.reset()
+        state, info = env.reset()
         # interact until done
         while True:
-            act = policy(obs)
-            next_obs, reward, done, info = env.step(act)
+            act = policy(state)
+            next_state, reward, done, info = env.step(act)
             ep_reward += reward
             if done:
                 break
-            obs = next_obs
+            state = next_state
         ep_rewards.append(ep_reward)
         # output information
         if outputFlag:
