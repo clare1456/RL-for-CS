@@ -139,18 +139,19 @@ class CGWithSelection(ColumnGeneration.ColumnGenerationWithLabeling):
 if __name__ == "__main__":
     class Args:
         instance = "R101"
-        limit_node_num = 30
-        max_step = 20
+        limit_node_num = 101
+        max_step = 30
 
     args = Args()
     env = CGEnv(args)
 
+    start_time = time.time()
     state, info = env.reset()
     iter_cnt = 0
     reward_list = []
     while True:
         # test: randomly delete a column
-        col_num = len(state)
+        col_num = len(state["columns_state"])
         action = np.ones(col_num)
         # choose_delete = np.random.randint(col_num)
         # action[choose_delete] = 0
@@ -160,7 +161,8 @@ if __name__ == "__main__":
         if done:
             break
         iter_cnt += 1
-    print("total_reward = {}".format(sum(reward_list)))
+    time_cost = time.time() - start_time
+    print("total_reward = {}, time_cost = {}".format(sum(reward_list), time_cost))
     plt.plot(range(len(reward_list)), reward_list)
     plt.show()
 

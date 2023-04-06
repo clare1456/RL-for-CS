@@ -47,15 +47,15 @@ def trainOffPolicy(policy, args, res_queue, outputFlag=False, seed=0):
             info = next_info
             # update policy
             if (step_cnt + 1) % args.update_steps == 0 and buffer.size() >= args.minimal_size:
-                policy.update(buffer, critic_1_optim, critic_2_optim, actor_optim, alpha_optim)
+                avg_loss = policy.update(buffer, critic_1_optim, critic_2_optim, actor_optim, alpha_optim)
+                res_queue.put({"tag" : "loss", "value" : avg_loss, "step" : epi+1})
             step_cnt += 1
         ep_rewards.append(ep_reward)
         # output information
-        if (epi + 1) % args.output_eps == 0:
-            mean_reward = sum(ep_rewards[-args.output_eps:])/args.output_eps
-            res_queue.put(mean_reward)
-            if outputFlag:
-                print("Episode {}/{}: avg_reward = {}".format(epi+1, args.train_eps, mean_reward))
+        res_queue.put({"tag" : "reward", "value" : ep_reward, "step" : epi+1})
+        if outputFlag and (epi + 1) % args.output_eps == 0:
+            avg_reward = sum(ep_rewards[-args.output_eps:])/args.output_eps
+            print("Episode {}/{}: avg_reward = {}".format(epi+1, args.train_eps, avg_reward))
     res_queue.put(None)
     if outputFlag:
         print("Training Finished!")
@@ -85,7 +85,7 @@ def test(policy, args, outputFlag=False):
         ep_rewards.append(ep_reward)
         # output information
         if outputFlag:
-            print("Episode {}/{}: reward = {}".format(epi, args.test_eps, ep_reward))
+            print("Episode {}/{}: reward = {}".format(epi+1, args.test_eps, ep_reward))
     if outputFlag:
         print("Testing Finished!")
     return ep_rewards

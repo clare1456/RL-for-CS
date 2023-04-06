@@ -33,9 +33,10 @@ class SACPolicy(basePolicy):
     def __init__(self, args):
         super(SACPolicy, self).__init__(args)
         # trainable objects
-        if args.net == "MHA":
+        self.net_name = args.net
+        if self.net_name == "MHA":
             net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=256)
-        elif args.net == "GAT":
+        elif self.net_name == "GAT":
             net = Net.GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, maxNodeNum=args.limit_node_num)
         # net = Net.GAT_EFA_Net(nfeat=3+args.limit_node_num, nedgef=5, embed_dim=128)
         self.actor = Net.Actor(net, hidden_dim=128, device=args.device).to(args.device)
@@ -84,7 +85,7 @@ class SACPolicy(basePolicy):
 
     def update(self, buffer, critic_1_optim, critic_2_optim, actor_optim, alpha_optim):
         states, actions, rewards, next_states, dones = buffer.sample() 
-        
+        avg_loss = 0 
         for i in range(buffer.batch_size):
             # critic loss
             td_target = self.calc_target(rewards[i], next_states[i], dones[i])
@@ -114,24 +115,21 @@ class SACPolicy(basePolicy):
             alpha_optim.zero_grad()
             alpha_loss.backward()
             alpha_optim.step()
+            avg_loss += (critic_1_loss + critic_2_loss + actor_loss + alpha_loss).detach().numpy()
+        avg_loss /= buffer.batch_size
         # soft update target network
         self.soft_update(self.critic_1, self.target_critic_1) 
         self.soft_update(self.critic_2, self.target_critic_2) 
+        return avg_loss
         
     def save(self, path):
         # create dir if not exist
         if not os.path.exists(path):
             os.makedirs(path)
-        torch.save(self.actor.state_dict(), path + 'actor.pth')
-        torch.save(self.critic_1.state_dict(), path + 'critic_1.pth')
-        torch.save(self.critic_2.state_dict(), path + 'critic_2.pth')
-        torch.save(self.log_alpha, path + 'log_alpha.pth')
+        torch.save(self.state_dict(), path + '{}_SACPolicy.pth'.format(self.net_name))
         
     def load(self, path):
-        self.actor.load_state_dict(torch.load(path + 'actor.pth'))
-        self.critic_1.load_state_dict(torch.load(path + 'critic_1.pth'))
-        self.critic_2.load_state_dict(torch.load(path + 'critic_2.pth'))
-        self.log_alpha.load_state_dict(torch.load(path + 'log_alpha.pth'))
+        self.load_state_dict(torch.load(path) + '{}_SACPolicy.pth'.format(self.net_name))
     
 class PPOPolicy(basePolicy):
     def __init__(self, args):
