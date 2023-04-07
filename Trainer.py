@@ -79,19 +79,18 @@ def trainOnPolicy(policy, args, res_queue, outputFlag=False, seed=0):
     step_cnt = 0
     for epi in range(args.train_eps):
         ep_reward = 0
-        transition_dict = {"states" : [], "actions" : [], "rewards" : [], "next_states" : [], "dones" : [], "log_probs" : []}
+        transition_dict = {"states" : [], "actions" : [], "rewards" : [], "next_states" : [], "dones" : []}
         # reset environment
         state, info = env.reset()
         # interact until done
         while True:
-            act, log_prob = policy(state)
+            act = policy(state)
             next_state, rew, done, next_info = env.step(act)
             transition_dict["states"].append(state)
             transition_dict["rewards"].append(rew)
             transition_dict["actions"].append(act)
             transition_dict["next_states"].append(next_state)
             transition_dict["dones"].append(done)
-            transition_dict["log_probs"].append(log_prob)
             ep_reward += rew
             if done:
                 break

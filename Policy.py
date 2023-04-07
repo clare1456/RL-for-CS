@@ -153,13 +153,7 @@ class PPOPolicy(basePolicy):
         for i in range(column_num):
             # 依概率选择1或0
             act[i] = np.random.random() < prob[i][1]
-        log_prob = torch.log(prob + 1e-8).detach().numpy()[range(len(act)), act]
-        return act, log_prob
-
-    def calc_target(self, reward, next_state, done):
-        next_value = torch.sum(self.critic(next_state))
-        td_target = reward + self.gamma * next_value * (1 - done)
-        return td_target
+        return act
 
     def compute_advantage(self, gamma, lmbda, td_deltas):
         advantage_list = []
@@ -170,22 +164,30 @@ class PPOPolicy(basePolicy):
         advantage_list.reverse()
         return advantage_list
     
+    def get_critic_value(self, critic, state):
+        return torch.sum(torch.max(critic(state), dim=1).values)
+
     def update(self, transition_dict, actor_optim, critic_optim):
+        # PPO update function
         states = transition_dict["states"]
         actions = transition_dict["actions"]
         rewards = transition_dict["rewards"]
         next_states = transition_dict["next_states"]
         dones = transition_dict["dones"] 
-        old_log_probs = transition_dict["log_probs"] 
         rewards = torch.FloatTensor(rewards).to(self.device)
         # get td_targets, td_deltas, advantages
         td_targets = []
         for i in range(len(states)):
-            td_targets.append(self.calc_target(rewards[i], next_states[i], dones[i]))
+            td_target = rewards[i] + self.gamma * self.get_critic_value(self.critic, next_states[i]) * (1 - dones[i])
+            td_targets.append(td_target)
         td_deltas = []
         for i in range(len(states)):
-            td_deltas.append(td_targets[i] - torch.sum(self.critic(states[i])))
+            td_deltas.append(td_targets[i] - self.get_critic_value(self.critic, states[i]))
         advantages = self.compute_advantage(self.gamma, self.lmbda, td_deltas)
+        old_log_probs = []
+        for i in range(len(states)):
+            prob = self.actor(states[i])
+            old_log_probs.append(torch.log(prob + 1e-8).detach().numpy()[range(len(actions[i])), actions[i]])
         # transfer to tensor
         td_deltas = torch.FloatTensor(td_deltas).to(self.device)
         td_targets = torch.FloatTensor(td_targets).to(self.device)
@@ -204,7 +206,7 @@ class PPOPolicy(basePolicy):
                 surr1 = ratio * advantages[i]
                 surr2 = torch.clamp(ratio, 1.0 - self.eps, 1.0 + self.eps) * advantages[i] # 截断
                 actor_loss += -torch.min(surr1, surr2) # PPO loss 
-                critic_output = torch.sum(self.critic(states[i]))
+                critic_output = self.get_critic_value(self.critic, states[i])
                 critic_loss += F.mse_loss(critic_output, td_targets[i].detach()) 
             actor_loss /= len(states) # mean
             critic_loss /= len(states) # mean

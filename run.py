@@ -28,7 +28,7 @@ class Args:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 检测GPU
         self.seed = 10 # 随机种子，置0则不设置随机种子
         self.process_num = mp.cpu_count()//2  # 每次训练的进程数
-        self.train_eps = 50 # 训练的回合数
+        self.train_eps = 0 # 训练的回合数
         self.test_eps = 10 # 测试的回合数
         ################################################################################
         
