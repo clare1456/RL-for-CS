@@ -24,21 +24,24 @@ class basePolicy(nn.Module):
         raise NotImplementedError
 
     def save(self, path):
-        raise NotImplementedError
-
+        # create dir if not exist
+        if not os.path.exists(path):
+            os.makedirs(path)
+        torch.save(self.state_dict(), path + '{}.pth'.format(self.alg_name))
+        
     def load(self, path):
-        raise NotImplementedError
+        self.load_state_dict(torch.load(path) + '{}.pth'.format(self.alg_name))
 
 class SACPolicy(basePolicy):
     def __init__(self, args):
         super(SACPolicy, self).__init__(args)
+        self.alg_name = "{}_SACPolicy".format(args.policy)
         # trainable objects
         self.net_name = args.net
         if self.net_name == "MHA":
-            net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=256)
+            net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=args.hidden_dim)
         elif self.net_name == "GAT":
-            net = Net.GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, maxNodeNum=args.limit_node_num)
-        # net = Net.GAT_EFA_Net(nfeat=3+args.limit_node_num, nedgef=5, embed_dim=128)
+            net = Net.GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, nhid = args.hidden_dim, maxNodeNum=args.limit_node_num)
         self.actor = Net.Actor(net, hidden_dim=128, device=args.device).to(args.device)
         self.critic_1 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
         self.critic_2 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
@@ -121,19 +124,98 @@ class SACPolicy(basePolicy):
         self.soft_update(self.critic_1, self.target_critic_1) 
         self.soft_update(self.critic_2, self.target_critic_2) 
         return avg_loss
-        
-    def save(self, path):
-        # create dir if not exist
-        if not os.path.exists(path):
-            os.makedirs(path)
-        torch.save(self.state_dict(), path + '{}_SACPolicy.pth'.format(self.net_name))
-        
-    def load(self, path):
-        self.load_state_dict(torch.load(path) + '{}_SACPolicy.pth'.format(self.net_name))
-    
+
 class PPOPolicy(basePolicy):
     def __init__(self, args):
         super(PPOPolicy, self).__init__(args)
-        #todo
+        self.alg_name = "{}_PPOPolicy".format(args.policy)
+        # trainable objects
+        self.net_name = args.net
+        if self.net_name == "MHA":
+            net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=256)
+        elif self.net_name == "GAT":
+            net = Net.GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, maxNodeNum=args.limit_node_num)
+        self.actor = Net.Actor(net, hidden_dim=128, device=args.device).to(args.device)
+        self.critic = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
+        # arguments
+        self.gamma = args.gamma
+        self.lmbda = args.lmbda
+        self.epochs = args.epochs
+        self.eps= args.eps
+        self.device = args.device
+    
+    def forward(self, state):
+        column_num = len(state["columns_state"])
+        # 计算网络输出
+        prob = self.actor(state)
+        # 处理输出结果
+        act = np.zeros(column_num, dtype=np.int)
+        for i in range(column_num):
+            # 依概率选择1或0
+            act[i] = np.random.random() < prob[i][1]
+        log_prob = torch.log(prob + 1e-8).detach().numpy()[range(len(act)), act]
+        return act, log_prob
+
+    def calc_target(self, reward, next_state, done):
+        next_value = torch.sum(self.critic(next_state))
+        td_target = reward + self.gamma * next_value * (1 - done)
+        return td_target
+
+    def compute_advantage(self, gamma, lmbda, td_deltas):
+        advantage_list = []
+        advantage = 0.0
+        for delta in td_deltas[::-1]:
+            advantage = gamma * lmbda * advantage + delta
+            advantage_list.append(advantage)
+        advantage_list.reverse()
+        return advantage_list
+    
+    def update(self, transition_dict, actor_optim, critic_optim):
+        states = transition_dict["states"]
+        actions = transition_dict["actions"]
+        rewards = transition_dict["rewards"]
+        next_states = transition_dict["next_states"]
+        dones = transition_dict["dones"] 
+        old_log_probs = transition_dict["log_probs"] 
+        rewards = torch.FloatTensor(rewards).to(self.device)
+        # get td_targets, td_deltas, advantages
+        td_targets = []
+        for i in range(len(states)):
+            td_targets.append(self.calc_target(rewards[i], next_states[i], dones[i]))
+        td_deltas = []
+        for i in range(len(states)):
+            td_deltas.append(td_targets[i] - torch.sum(self.critic(states[i])))
+        advantages = self.compute_advantage(self.gamma, self.lmbda, td_deltas)
+        # transfer to tensor
+        td_deltas = torch.FloatTensor(td_deltas).to(self.device)
+        td_targets = torch.FloatTensor(td_targets).to(self.device)
+        advantages = torch.FloatTensor(advantages).to(self.device)
+
+        avg_loss = 0.0
+        for _ in range(self.epochs):
+            actor_optim.zero_grad()
+            critic_optim.zero_grad()
+            actor_loss = 0.0
+            critic_loss = 0.0
+            for i in range(len(states)):
+                log_prob = torch.log(self.actor(states[i]) + 1e-8)[range(len(actions[i])), actions[i]]
+                old_log_prob = torch.FloatTensor(old_log_probs[i]).to(self.device)
+                ratio = torch.mean(torch.exp(log_prob - old_log_prob))
+                surr1 = ratio * advantages[i]
+                surr2 = torch.clamp(ratio, 1.0 - self.eps, 1.0 + self.eps) * advantages[i] # 截断
+                actor_loss += -torch.min(surr1, surr2) # PPO loss 
+                critic_output = torch.sum(self.critic(states[i]))
+                critic_loss += F.mse_loss(critic_output, td_targets[i].detach()) 
+            actor_loss /= len(states) # mean
+            critic_loss /= len(states) # mean
+            actor_loss.backward()
+            critic_loss.backward()
+            actor_optim.step()
+            critic_optim.step() 
+            avg_loss += (actor_loss + critic_loss).detach().numpy()
+        avg_loss /= self.epochs
+        return avg_loss
+            
+        
 
 

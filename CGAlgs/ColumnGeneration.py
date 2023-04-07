@@ -220,7 +220,7 @@ class ColumnGenerationWithLabeling(ColumnGeneration):
 
 if __name__ == "__main__":
     file_name = "problems\R101.txt"
-    graph = GraphTool.Graph(file_name)
+    graph = GraphTool.Graph(file_name, limit_node_num=50)
     # alg = ColumnGeneration(graph) # result: optimal 828.936, time 359.5s
     alg = ColumnGenerationWithLabeling(graph) # result: optimal 828.936, time 68.0s
     routes = alg.run()

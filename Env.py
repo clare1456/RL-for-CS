@@ -139,7 +139,7 @@ class CGWithSelection(ColumnGeneration.ColumnGenerationWithLabeling):
 if __name__ == "__main__":
     class Args:
         instance = "R101"
-        limit_node_num = 101
+        limit_node_num = 50
         max_step = 30
 
     args = Args()

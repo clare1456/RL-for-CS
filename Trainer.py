@@ -15,7 +15,7 @@ import Env
 
 def trainOffPolicy(policy, args, res_queue, outputFlag=False, seed=0):
     """ 
-    训练过程
+    OffPolicy训练过程
     """
     if seed != 0:
         torch.manual_seed(seed)
@@ -51,6 +51,58 @@ def trainOffPolicy(policy, args, res_queue, outputFlag=False, seed=0):
                 res_queue.put({"tag" : "loss", "value" : avg_loss, "step" : epi+1})
             step_cnt += 1
         ep_rewards.append(ep_reward)
+        # output information
+        res_queue.put({"tag" : "reward", "value" : ep_reward, "step" : epi+1})
+        if outputFlag and (epi + 1) % args.output_eps == 0:
+            avg_reward = sum(ep_rewards[-args.output_eps:])/args.output_eps
+            print("Episode {}/{}: avg_reward = {}".format(epi+1, args.train_eps, avg_reward))
+    res_queue.put(None)
+    if outputFlag:
+        print("Training Finished!")
+    return ep_rewards
+
+
+def trainOnPolicy(policy, args, res_queue, outputFlag=False, seed=0):
+    """ 
+    OnPolicy训练过程
+    """
+    if seed != 0:
+        torch.manual_seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
+    env = Env.CGEnv(args)
+    actor_optim = torch.optim.Adam(policy.actor.parameters(), lr=args.actor_lr)
+    critic_optim = torch.optim.Adam(policy.critic.parameters(), lr=args.critic_lr)
+    ep_rewards = [] # 记录所有回合奖励
+    if outputFlag:
+        print("\nTraining Begin!")
+    step_cnt = 0
+    for epi in range(args.train_eps):
+        ep_reward = 0
+        transition_dict = {"states" : [], "actions" : [], "rewards" : [], "next_states" : [], "dones" : [], "log_probs" : []}
+        # reset environment
+        state, info = env.reset()
+        # interact until done
+        while True:
+            act, log_prob = policy(state)
+            next_state, rew, done, next_info = env.step(act)
+            transition_dict["states"].append(state)
+            transition_dict["rewards"].append(rew)
+            transition_dict["actions"].append(act)
+            transition_dict["next_states"].append(next_state)
+            transition_dict["dones"].append(done)
+            transition_dict["log_probs"].append(log_prob)
+            ep_reward += rew
+            if done:
+                break
+            state = next_state
+            info = next_info
+            step_cnt += 1
+        ep_rewards.append(ep_reward)
+        # update policy
+        if (epi + 1) % args.update_eps == 0:
+            avg_loss = policy.update(transition_dict, actor_optim, critic_optim)
+            res_queue.put({"tag" : "loss", "value" : avg_loss, "step" : epi+1})
         # output information
         res_queue.put({"tag" : "reward", "value" : ep_reward, "step" : epi+1})
         if outputFlag and (epi + 1) % args.output_eps == 0:
