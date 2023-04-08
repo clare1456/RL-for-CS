@@ -18,18 +18,22 @@ import gymnasium as gym
 
 class CGEnv(gym.Env):
     def __init__(self, args):
-        instance = args.instance
-        limit_node_num = args.limit_node_num
+        self.instance = args.instance
+        self.limit_node_num = args.limit_node_num
         self.max_step = args.max_step # max iteration in one episode
-        file_path = "problems\{}.txt".format(instance)
-        self.graph = GraphTool.Graph(file_path, limit_node_num)
+        file_path = "problems\{}.txt".format(self.instance)
+        self.graph = GraphTool.Graph(file_path, self.limit_node_num)
         self.CGAlg = CGWithSelection(self.graph)
         # action_space, observation_space updates 
         self.step_cost = 10 # step punishment in reward
 
-    def reset(self):
+    def reset(self, instance=None):
         # reset Column Generation Algorithm
-        self.CGAlg.reset()
+        if instance is not None and instance != self.instance:
+            self.instance = instance
+            file_path = "problems\{}.txt".format(self.instance)
+            self.graph = GraphTool.Graph(file_path, self.limit_node_num)
+        self.CGAlg = CGWithSelection(self.graph)
         # run column generation until column selection part
         CG_flag = self.CGAlg.column_generation_before_selection()
         assert CG_flag == -1, "ERROR: Column Generation finished in 0 step"
@@ -72,8 +76,8 @@ class CGEnv(gym.Env):
         
 
 class CGWithSelection(ColumnGeneration.ColumnGenerationWithLabeling):
-    def reset(self):
-        super().__init__(self.graph) # no need to build SP
+    def __init__(self, graph):
+        super(CGWithSelection, self).__init__(graph)
         self.OutputFlag = False
 
     def column_generation_before_selection(self):
