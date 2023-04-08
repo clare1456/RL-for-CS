@@ -89,6 +89,9 @@ class SACPolicy(basePolicy):
     def update(self, buffer, critic_1_optim, critic_2_optim, actor_optim, alpha_optim):
         states, actions, rewards, next_states, dones = buffer.sample() 
         avg_loss = 0 
+        avg_actor_loss = 0
+        avg_critic_loss = 0
+        avg_alpha_loss = 0
         for i in range(buffer.batch_size):
             # critic loss
             td_target = self.calc_target(rewards[i], next_states[i], dones[i])
@@ -118,12 +121,25 @@ class SACPolicy(basePolicy):
             alpha_optim.zero_grad()
             alpha_loss.backward()
             alpha_optim.step()
-            avg_loss += (critic_1_loss + critic_2_loss + actor_loss + alpha_loss).detach().numpy()
+            # record loss
+            avg_actor_loss += actor_loss.detach().numpy()
+            avg_critic_loss += (critic_1_loss + critic_2_loss).detach().numpy()
+            avg_alpha_loss += alpha_loss.detach().numpy()
+            avg_loss += avg_actor_loss + avg_critic_loss + avg_alpha_loss
+        avg_actor_loss /= buffer.batch_size
+        avg_critic_loss /= buffer.batch_size
+        avg_alpha_loss /= buffer.batch_size
         avg_loss /= buffer.batch_size
         # soft update target network
         self.soft_update(self.critic_1, self.target_critic_1) 
         self.soft_update(self.critic_2, self.target_critic_2) 
-        return avg_loss
+        loss_info = {
+            "avg_loss": avg_loss,
+            "avg_actor_loss": avg_actor_loss,
+            "avg_critic_loss": avg_critic_loss,
+            "avg_alpha_loss": avg_alpha_loss,
+        }
+        return loss_info
 
 class PPOPolicy(basePolicy):
     def __init__(self, args):
@@ -187,7 +203,7 @@ class PPOPolicy(basePolicy):
         old_log_probs = []
         for i in range(len(states)):
             prob = self.actor(states[i])
-            old_log_probs.append(torch.log(prob + 1e-8).detach().numpy()[range(len(actions[i])), actions[i]])
+            old_log_probs.append(torch.log(prob + 1e-8).detach()[range(len(actions[i])), actions[i]])
         # transfer to tensor
         td_deltas = torch.FloatTensor(td_deltas).to(self.device)
         td_targets = torch.FloatTensor(td_targets).to(self.device)
@@ -200,9 +216,9 @@ class PPOPolicy(basePolicy):
             actor_loss = 0.0
             critic_loss = 0.0
             for i in range(len(states)):
-                log_prob = torch.log(self.actor(states[i]) + 1e-8)[range(len(actions[i])), actions[i]]
-                old_log_prob = torch.FloatTensor(old_log_probs[i]).to(self.device)
-                ratio = torch.mean(torch.exp(log_prob - old_log_prob))
+                prob = self.actor(states[i])
+                log_prob = torch.log(prob + 1e-8)[range(len(actions[i])), actions[i]]
+                ratio = torch.mean(torch.exp(log_prob - old_log_probs[i]))
                 surr1 = ratio * advantages[i]
                 surr2 = torch.clamp(ratio, 1.0 - self.eps, 1.0 + self.eps) * advantages[i] # 截断
                 actor_loss += -torch.min(surr1, surr2) # PPO loss 

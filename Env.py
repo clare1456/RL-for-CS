@@ -57,6 +57,12 @@ class CGEnv(gym.Env):
             done = 1
         return state, reward, done, info
     
+    def get_final_RLMP_obj(self):
+        return self.CGAlg.RLMP_obj
+
+    def get_iter_times(self):
+        return self.iter_cnt
+
     def render(self):
         pass
 

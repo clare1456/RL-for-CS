@@ -47,12 +47,17 @@ def trainOffPolicy(policy, args, res_queue, outputFlag=False, seed=0):
             info = next_info
             # update policy
             if (step_cnt + 1) % args.update_steps == 0 and buffer.size() >= args.minimal_size:
-                avg_loss = policy.update(buffer, critic_1_optim, critic_2_optim, actor_optim, alpha_optim)
-                res_queue.put({"tag" : "loss", "value" : avg_loss, "step" : epi+1})
+                loss_info = policy.update(buffer, critic_1_optim, critic_2_optim, actor_optim, alpha_optim)
+                # record loss information
+                for key, value in loss_info.items():
+                    res_queue.put({"tag" : "loss/" + key, "value" : value, "step" : epi+1})
             step_cnt += 1
         ep_rewards.append(ep_reward)
+        # record result information
+        res_queue.put({"tag" : "result/reward", "value" : ep_reward, "step" : epi+1})
+        res_queue.put({"tag" : "result/finalObj", "value" : env.get_final_RLMP_obj(), "step" : epi+1})
+        res_queue.put({"tag" : "result/iterTimes", "value" : env.get_iter_times(), "step" : epi+1})
         # output information
-        res_queue.put({"tag" : "reward", "value" : ep_reward, "step" : epi+1})
         if outputFlag and (epi + 1) % args.output_eps == 0:
             avg_reward = sum(ep_rewards[-args.output_eps:])/args.output_eps
             print("Episode {}/{}: avg_reward = {}".format(epi+1, args.train_eps, avg_reward))
@@ -100,10 +105,14 @@ def trainOnPolicy(policy, args, res_queue, outputFlag=False, seed=0):
         ep_rewards.append(ep_reward)
         # update policy
         if (epi + 1) % args.update_eps == 0:
-            avg_loss = policy.update(transition_dict, actor_optim, critic_optim)
-            res_queue.put({"tag" : "loss", "value" : avg_loss, "step" : epi+1})
+            loss_info = policy.update(transition_dict, actor_optim, critic_optim)
+            for key, value in loss_info.items():
+                res_queue.put({"tag" : "loss/" + key, "value" : value, "step" : epi+1})
+        # record result information
+        res_queue.put({"tag" : "result/reward", "value" : ep_reward, "step" : epi+1})
+        res_queue.put({"tag" : "result/finalObj", "value" : env.get_final_RLMP_obj(), "step" : epi+1})
+        res_queue.put({"tag" : "result/iterTimes", "value" : env.get_iter_times(), "step" : epi+1})
         # output information
-        res_queue.put({"tag" : "reward", "value" : ep_reward, "step" : epi+1})
         if outputFlag and (epi + 1) % args.output_eps == 0:
             avg_reward = sum(ep_rewards[-args.output_eps:])/args.output_eps
             print("Episode {}/{}: avg_reward = {}".format(epi+1, args.train_eps, avg_reward))
