@@ -18,12 +18,9 @@ import gymnasium as gym
 
 class CGEnv(gym.Env):
     def __init__(self, args):
-        self.instance = args.instance
+        self.instance = "initial"
         self.limit_node_num = args.limit_node_num
         self.max_step = args.max_step # max iteration in one episode
-        file_path = "problems\{}.txt".format(self.instance)
-        self.graph = GraphTool.Graph(file_path, self.limit_node_num)
-        self.CGAlg = CGWithSelection(self.graph)
         # action_space, observation_space updates 
         self.step_cost = 10 # step punishment in reward
 

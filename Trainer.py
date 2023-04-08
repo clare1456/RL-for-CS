@@ -13,6 +13,31 @@ import random
 import torch
 import Env
 
+class instanceGenerator:
+    def __init__(self, args):
+        # 样本生成模式 or 固定样本名称
+        self.instance = args.instance 
+        # 地图更新周期
+        self.map_change_eps = args.map_change_eps 
+        # curriculumn learning 从简单到复杂的训练顺序
+        self.sequence = [
+            "R101", "C101", 
+        ]
+        # 随机模式下随机样本训练顺序
+        if self.instance == "random": 
+            np.random.shuffle(self.sequence)
+        # 记录已经训练的样本数
+        self.iter_cnt = 0
+    
+    def get(self):
+        if self.instance == "sequence" or self.instance == "random":
+            cur_instance = self.sequence[(self.iter_cnt // self.map_change_eps) % len(self.sequence)]
+            self.iter_cnt += 1
+            return cur_instance
+        else:
+            return self.instance
+        
+
 def trainOffPolicy(policy, args, res_queue, outputFlag=False, seed=0):
     """ 
     OffPolicy训练过程
@@ -22,6 +47,7 @@ def trainOffPolicy(policy, args, res_queue, outputFlag=False, seed=0):
         random.seed(seed)
         np.random.seed(seed)
     env = Env.CGEnv(args)
+    instance_generator = instanceGenerator(args)
     buffer = ReplayBuffer(args.buffer_size, args.batch_size)
     critic_1_optim = torch.optim.Adam(policy.critic_1.parameters(), lr=args.critic_lr)
     critic_2_optim = torch.optim.Adam(policy.critic_2.parameters(), lr=args.critic_lr)
@@ -34,7 +60,8 @@ def trainOffPolicy(policy, args, res_queue, outputFlag=False, seed=0):
     for epi in range(args.train_eps):
         ep_reward = 0
         # reset environment
-        state, info = env.reset()
+        instance = instance_generator.get()
+        state, info = env.reset(instance)
         # interact until done
         while True:
             act = policy(state)
@@ -76,6 +103,7 @@ def trainOnPolicy(policy, args, res_queue, outputFlag=False, seed=0):
         random.seed(seed)
         np.random.seed(seed)
     env = Env.CGEnv(args)
+    instance_generator = instanceGenerator(args)
     actor_optim = torch.optim.Adam(policy.actor.parameters(), lr=args.actor_lr)
     critic_optim = torch.optim.Adam(policy.critic.parameters(), lr=args.critic_lr)
     ep_rewards = [] # 记录所有回合奖励
@@ -86,7 +114,8 @@ def trainOnPolicy(policy, args, res_queue, outputFlag=False, seed=0):
         ep_reward = 0
         transition_dict = {"states" : [], "actions" : [], "rewards" : [], "next_states" : [], "dones" : []}
         # reset environment
-        state, info = env.reset()
+        instance = instance_generator.get()
+        state, info = env.reset(instance)
         # interact until done
         while True:
             act = policy(state)
