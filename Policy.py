@@ -41,7 +41,7 @@ class SACPolicy(basePolicy):
         if self.net_name == "MHA":
             net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=args.hidden_dim)
         elif self.net_name == "GAT":
-            net = Net.GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, nhid = args.hidden_dim, maxNodeNum=args.limit_node_num)
+            net = Net.GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, nhid = 64, maxNodeNum=args.limit_node_num)
         self.actor = Net.Actor(net, hidden_dim=128, device=args.device).to(args.device)
         self.critic_1 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
         self.critic_2 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
@@ -150,7 +150,7 @@ class PPOPolicy(basePolicy):
         if self.net_name == "MHA":
             net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=256)
         elif self.net_name == "GAT":
-            net = Net.GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, maxNodeNum=args.limit_node_num)
+            net = Net.GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, nhid = 64, maxNodeNum=args.limit_node_num)
         self.actor = Net.Actor(net, hidden_dim=128, device=args.device).to(args.device)
         self.critic = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
         # arguments

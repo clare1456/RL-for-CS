@@ -310,7 +310,7 @@ if __name__ ==  '__main__':
         "constraints_state" : constraints_state, 
     }
 
-    model = GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, maxNodeNum=nodeNum)
+    model = GAT_EFA_Net(nfeat=128, nedgef=128, nhid=128, embed_dim=128, maxNodeNum=nodeNum)
     res = model(state)
     print(res)
     print(res.shape)
