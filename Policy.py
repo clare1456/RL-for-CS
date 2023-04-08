@@ -210,6 +210,8 @@ class PPOPolicy(basePolicy):
         advantages = torch.FloatTensor(advantages).to(self.device)
 
         avg_loss = 0.0
+        avg_actor_loss = 0.0
+        avg_critic_loss = 0.0
         for _ in range(self.epochs):
             actor_optim.zero_grad()
             critic_optim.zero_grad()
@@ -230,9 +232,18 @@ class PPOPolicy(basePolicy):
             critic_loss.backward()
             actor_optim.step()
             critic_optim.step() 
-            avg_loss += (actor_loss + critic_loss).detach().numpy()
+            avg_actor_loss += actor_loss.detach().numpy()
+            avg_critic_loss += critic_loss.detach().numpy()
+            avg_loss += avg_actor_loss + avg_critic_loss
+        avg_actor_loss /= self.epochs
+        avg_critic_loss /= self.epochs
         avg_loss /= self.epochs
-        return avg_loss
+        loss_info = {
+            "avg_loss" : avg_loss,
+            "avg_actor_loss" : avg_actor_loss,
+            "avg_critic_loss" : avg_critic_loss,
+        }
+        return loss_info
             
         
 
