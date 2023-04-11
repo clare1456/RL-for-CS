@@ -219,8 +219,10 @@ class ColumnGenerationWithLabeling(ColumnGeneration):
             self.add_column_into_RLMP(route, route_length, new_column)
 
 if __name__ == "__main__":
-    file_name = "problems\R101.txt"
-    graph = GraphTool.Graph(file_name, limit_node_num=50)
+    # file_name = "problems\C101.txt"
+    # file_name = "pretrain\dataset\GH_instance\RC\RC2_6_1.TXT"
+    file_name = "pretrain\dataset\CGDataset\RC1_2_1.json"
+    graph = GraphTool.Graph(file_name)
     # alg = ColumnGeneration(graph) # result: optimal 828.936, time 359.5s
     alg = ColumnGenerationWithLabeling(graph) # result: optimal 828.936, time 68.0s
     routes = alg.run()
