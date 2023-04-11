@@ -8,7 +8,10 @@ import bitarray
 
 class Graph():
     def __init__(self, file_name, limit_node_num = None):
-        self.read_data(file_name, limit_node_num) # read data from file
+        if file_name.endswith('.json'):
+            self.read_data_from_json(file_name, limit_node_num)
+        else:
+            self.read_data(file_name, limit_node_num) # read data from file
         self.preprocess_data() # preprocess data
     
     def read_data(self, file_name, limit_node_num):
@@ -47,6 +50,16 @@ class Graph():
         self.dueTime = np.array(dueTime[:limit_node_num])
         self.serviceTime = np.array(serviceTime[:limit_node_num])
      
+    def read_data_from_json(self, file_name, limit_node_num):
+        data = json.load(open(file_name, 'r')) 
+        self.vehicleNum = data['vehicleNum']
+        self.capacity = data['capacity']
+        self.location = np.array(list(data['location'].values()))[:limit_node_num]
+        self.demand = np.array(list(data['demand'].values()))[:limit_node_num]
+        self.readyTime = np.array(list(data['readyTime'].values()))[:limit_node_num]
+        self.dueTime = np.array(list(data['dueTime'].values()))[:limit_node_num]
+        self.serviceTime = np.array(list(data['serviceTime'].values()))[:limit_node_num]
+
     def preprocess_data(self):
         self.nodeNum = len(self.location) # record nodeNum
         self.cal_disMatrix() # calculate distances between each points
@@ -139,45 +152,9 @@ class Graph():
             plt.plot(self.location[route, 0], self.location[route, 1])
         plt.show()
 
-class GraphForAugerat(Graph):
-    def __init__(self, file_name):
-        self.read_data(file_name) 
-        self.preprocess_data()
-
-    def read_data(self, file_name):
-        """
-        read VRPTW data from Augerat dataset
-        """
-        with open(file_name) as file_object:
-            lines = file_object.readlines()
-        
-        # load vehicle setting
-        vehicleNum = nodeNum = int(lines[3].split()[2])
-        capacity = int(lines[5].split()[2])
-
-        # load customers setting
-        location = []
-        demand = []
-        for line in lines[7:7+nodeNum]:
-            cust = list(map(int, line.split()))
-            location.append(cust[1:3])
-        for line in lines[8+nodeNum:8+2*nodeNum]:
-            cust = list(map(int, line.split()))
-            demand.append(cust[1])
-        self.vehicleNum = vehicleNum
-        self.nodeNum = len(location)
-        self.capacity = capacity
-        self.location = np.array(location)
-        self.demand = np.array(demand)
-
-    def preprocess_data(self):
-        self.nodeNum = len(self.location)
-        self.cal_disMatrix()
-
-
 if __name__ == "__main__":
-    file_name = "solomon_100/r101.txt"
-    graph = Graph(file_name)
+    # file_name = "solomon_100/r101.txt"
+    # graph = Graph(file_name)
 
-    # file_name = "Augerat/A-n32-k5.vrp"
-    # graph = GraphForAugerat(file_name)
+    file_name = "pretrain\dataset\CGDataset\C1_2_1.json"
+    graph = Graph(file_name)
