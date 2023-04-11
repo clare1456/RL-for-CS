@@ -27,6 +27,7 @@ class Solomon_Insertion():
         self.graph = graph
 
     def get_init_node(self, point_list):
+        best_p = None
         if self.init_strategy == 0: # 0: choose farthest
             max_d = 0
             for p in point_list:
@@ -69,6 +70,7 @@ class Solomon_Insertion():
                 if start_time > max_t:
                     max_t = start_time
                     best_p = p # farthest point as max_pi
+        assert best_p is not None, "exists point can't arrive in time window" 
         return best_p
 
     def main_process(self):
