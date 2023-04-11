@@ -19,9 +19,22 @@ import os
 class basePolicy(nn.Module):
     def __init__(self, args):
         super().__init__()
+        self.net_name = args.net
+        if self.net_name == "MHA":
+            self.net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=args.hidden_dim)
+        elif self.net_name == "GAT":
+            self.net = Net.GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, nhid = 64, maxNodeNum=args.limit_node_num)
     
-    def forward(self, obs):
-        raise NotImplementedError
+    def forward(self, state):
+        column_num = len(state["columns_state"])
+        # 计算网络输出
+        prob = self.actor(state)
+        # 处理输出结果
+        act = np.zeros(column_num, dtype=np.int)
+        for i in range(column_num):
+            # 依概率选择1或0
+            act[i] = np.random.random() < prob[i][1]
+        return act
 
     def save(self, path):
         # create dir if not exist
@@ -37,16 +50,11 @@ class SACPolicy(basePolicy):
         super(SACPolicy, self).__init__(args)
         self.alg_name = "{}_SACPolicy".format(args.policy)
         # trainable objects
-        self.net_name = args.net
-        if self.net_name == "MHA":
-            net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=args.hidden_dim)
-        elif self.net_name == "GAT":
-            net = Net.GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, nhid = 64, maxNodeNum=args.limit_node_num)
-        self.actor = Net.Actor(net, hidden_dim=128, device=args.device).to(args.device)
-        self.critic_1 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
-        self.critic_2 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
-        self.target_critic_1 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
-        self.target_critic_2 = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
+        self.actor = Net.Actor(self.net, hidden_dim=128, device=args.device).to(args.device)
+        self.critic_1 = Net.Critic(self.net, hidden_dim=128, device=args.device).to(args.device)
+        self.critic_2 = Net.Critic(self.net, hidden_dim=128, device=args.device).to(args.device)
+        self.target_critic_1 = Net.Critic(self.net, hidden_dim=128, device=args.device).to(args.device)
+        self.target_critic_2 = Net.Critic(self.net, hidden_dim=128, device=args.device).to(args.device)
         self.target_critic_1.load_state_dict(state_dict=self.critic_1.state_dict())
         self.target_critic_2.load_state_dict(state_dict=self.critic_2.state_dict())
         self.log_alpha = torch.tensor(np.log(0.01), dtype=torch.float)
@@ -57,17 +65,6 @@ class SACPolicy(basePolicy):
         self.tau = args.tau
         self.device = args.device
 
-    def forward(self, state):
-        column_num = len(state["columns_state"])
-        # 计算网络输出
-        prob = self.actor(state)
-        # 处理输出结果
-        act = np.zeros(column_num)
-        for i in range(column_num):
-            # 依概率选择1或0
-            act[i] = np.random.random() < prob[i][1]
-        return act
-    
     # 计算目标Q值,直接用策略网络的输出概率进行期望计算
     def calc_target(self, reward, next_state, done):
         next_prob = self.actor(next_state)
@@ -146,13 +143,8 @@ class PPOPolicy(basePolicy):
         super(PPOPolicy, self).__init__(args)
         self.alg_name = "{}_PPOPolicy".format(args.policy)
         # trainable objects
-        self.net_name = args.net
-        if self.net_name == "MHA":
-            net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=256)
-        elif self.net_name == "GAT":
-            net = Net.GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, nhid = 64, maxNodeNum=args.limit_node_num)
-        self.actor = Net.Actor(net, hidden_dim=128, device=args.device).to(args.device)
-        self.critic = Net.Critic(net, hidden_dim=128, device=args.device).to(args.device)
+        self.actor = Net.Actor(self.net, hidden_dim=128, device=args.device).to(args.device)
+        self.critic = Net.Critic(self.net, hidden_dim=128, device=args.device).to(args.device)
         # arguments
         self.gamma = args.gamma
         self.lmbda = args.lmbda
@@ -160,17 +152,6 @@ class PPOPolicy(basePolicy):
         self.eps= args.eps
         self.device = args.device
     
-    def forward(self, state):
-        column_num = len(state["columns_state"])
-        # 计算网络输出
-        prob = self.actor(state)
-        # 处理输出结果
-        act = np.zeros(column_num, dtype=np.int)
-        for i in range(column_num):
-            # 依概率选择1或0
-            act[i] = np.random.random() < prob[i][1]
-        return act
-
     def compute_advantage(self, gamma, lmbda, td_deltas):
         advantage_list = []
         advantage = 0.0
