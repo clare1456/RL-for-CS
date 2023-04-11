@@ -101,9 +101,9 @@ class ModelHandler():
         """
         RLMP = gp.Model()
         # init solution with Heuristics
-        # heuristic = Solomon_Insertion(graph)
-        # routes = heuristic.run()
-        routes = [[0, i, 0] for i in range(1, graph.nodeNum)]
+        heuristic = Solomon_Insertion(graph)
+        routes = heuristic.run()
+        # routes = [[0, i, 0] for i in range(1, graph.nodeNum)]
         routes_length = []
         routes_a = np.zeros((len(routes), graph.nodeNum))
         for ri, route in enumerate(routes):
@@ -202,7 +202,7 @@ class ModelHandler():
         # build model
         self.build_model()
         # tune the model
-        self.model.tune()
+        # self.model.tune()
         # optimize the model
         self.model.optimize()
         # return routes
@@ -214,7 +214,7 @@ class ModelHandler():
 
 if __name__ == "__main__":
     # solve model with gurobi solver
-    file_name = "solomon_100/r101.txt"
+    file_name = "pretrain\dataset\CGDataset\RC1_2_1.json"
     # 101\102-1s, 101_25-0.02s, 103-200s
     graph = GraphTool.Graph(file_name)
     alg = ModelHandler(graph)
