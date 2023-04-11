@@ -21,6 +21,7 @@ class CGEnv(gym.Env):
         self.instance = "initial"
         self.limit_node_num = args.limit_node_num
         self.max_step = args.max_step # max iteration in one episode
+        self.alpha = 0.1 # reward rate of obj improvement
         # action_space, observation_space updates 
         self.step_cost = 10 # step punishment in reward
 
@@ -36,6 +37,7 @@ class CGEnv(gym.Env):
         assert CG_flag == -1, "ERROR: Column Generation finished in 0 step"
         # get state from alg
         state = self.CGAlg.get_column_selection_info()
+        self.obj_init = self.CGAlg.RLMP_obj
         info = {}
         self.iter_cnt = 0
         return state, info
@@ -51,7 +53,7 @@ class CGEnv(gym.Env):
         """ get state, reward, done, info """
         state = self.CGAlg.get_column_selection_info()
         info = {}
-        reward = obj_before - obj_after - self.step_cost
+        reward = self.alpha * (obj_before - obj_after) / self.obj_init - self.step_cost
         done = 0
         self.iter_cnt += 1
         if CG_flag == 1 or self.iter_cnt >= self.max_step:
