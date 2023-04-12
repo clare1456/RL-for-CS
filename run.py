@@ -23,19 +23,19 @@ class Args:
     def __init__(self) -> None:
         ################################## 环境超参数 ###################################
         self.instance = "random" # 算例 / 生成模式 random or sequence
-        self.limit_node_num = 50 # 限制算例点的个数
+        self.map_change_eps = 2 # 地图更新周期
+        self.limit_node_num = 30 # 限制算例点的个数
         self.max_step = 30 # CG最大迭代次数
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 检测GPU
         self.seed = 10 # 随机种子，置0则不设置随机种子
         self.process_num = 1  # 每次训练的进程数
         self.train_eps = 100 # 训练的回合数
         self.test_eps = 10 # 测试的回合数
-        self.map_change_eps = 2 # 地图更新周期
         ################################################################################
         
         ################################## 算法超参数 ####################################
         self.debug = 1 # 主线程运行而非单线程
-        self.net = "GAT" # GAT / MHA 选择 embedding 网络
+        self.net = "MHA" # GAT / MHA 选择 embedding 网络
         self.policy = "SAC" # SAC / PPO 选择算法
         self.hidden_dim = 128 # 隐藏层大小
         self.gamma = 0.98  # 强化学习中的折扣因子

@@ -21,7 +21,7 @@ class instanceGenerator:
         self.map_change_eps = args.map_change_eps 
         # curriculumn learning 从简单到复杂的训练顺序
         self.sequence = [
-            "R101", "C101", 
+            "R101", "C101", "R1_2_1", "R1_4_1", "R1_6_1", "R2_2_1", "R2_4_1", "R2_6_1", 
         ]
         # 随机模式下随机样本训练顺序
         if self.instance == "random": 
