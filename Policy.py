@@ -89,6 +89,8 @@ class SACPolicy(basePolicy):
         avg_actor_loss = 0
         avg_critic_loss = 0
         avg_alpha_loss = 0
+        avg_qvalue = 0
+        avg_prob = 0
         for i in range(buffer.batch_size):
             # critic loss
             td_target = self.calc_target(rewards[i], next_states[i], dones[i])
@@ -123,18 +125,24 @@ class SACPolicy(basePolicy):
             avg_critic_loss += (critic_1_loss + critic_2_loss).detach().numpy()
             avg_alpha_loss += alpha_loss.detach().numpy()
             avg_loss += avg_actor_loss + avg_critic_loss + avg_alpha_loss
+            avg_qvalue += min_qvalue.detach().numpy()
+            avg_prob += torch.mean(prob[:, 1]).detach().numpy()
         avg_actor_loss /= buffer.batch_size
         avg_critic_loss /= buffer.batch_size
         avg_alpha_loss /= buffer.batch_size
         avg_loss /= buffer.batch_size
+        avg_qvalue /= buffer.batch_size
+        avg_prob /= buffer.batch_size
         # soft update target network
         self.soft_update(self.critic_1, self.target_critic_1) 
         self.soft_update(self.critic_2, self.target_critic_2) 
         loss_info = {
-            "avg_loss": avg_loss,
-            "avg_actor_loss": avg_actor_loss,
-            "avg_critic_loss": avg_critic_loss,
-            "avg_alpha_loss": avg_alpha_loss,
+            "loss/avg_loss": avg_loss,
+            "loss/avg_actor_loss": avg_actor_loss,
+            "loss/avg_critic_loss": avg_critic_loss,
+            "loss/avg_alpha_loss": avg_alpha_loss,
+            "output/avg_critic_qvalue": avg_qvalue,
+            "output/avg_actor_prob": avg_prob,
         }
         return loss_info
 
@@ -193,11 +201,15 @@ class PPOPolicy(basePolicy):
         avg_loss = 0.0
         avg_actor_loss = 0.0
         avg_critic_loss = 0.0
+        avg_qvalue = 0.0
+        avg_prob = 0.0
         for _ in range(self.epochs):
             actor_optim.zero_grad()
             critic_optim.zero_grad()
             actor_loss = 0.0
             critic_loss = 0.0
+            qvalue_sum = 0.0
+            prob_sum = 0.0
             for i in range(len(states)):
                 prob = self.actor(states[i])
                 log_prob = torch.log(prob + 1e-8)[range(len(actions[i])), actions[i]]
@@ -207,8 +219,12 @@ class PPOPolicy(basePolicy):
                 actor_loss += -torch.min(surr1, surr2) # PPO loss 
                 critic_output = self.get_critic_value(self.critic, states[i])
                 critic_loss += F.mse_loss(critic_output, td_targets[i].detach()) 
+                qvalue_sum += critic_output.detach().numpy()
+                prob_sum += torch.mean(prob[:, 1]).detach().numpy()
             actor_loss /= len(states) # mean
             critic_loss /= len(states) # mean
+            qvalue_sum /= len(states)
+            prob_sum /= len(states)
             actor_loss.backward()
             critic_loss.backward()
             actor_optim.step()
@@ -216,13 +232,19 @@ class PPOPolicy(basePolicy):
             avg_actor_loss += actor_loss.detach().numpy()
             avg_critic_loss += critic_loss.detach().numpy()
             avg_loss += avg_actor_loss + avg_critic_loss
+            avg_qvalue += qvalue_sum
+            avg_prob += prob_sum
         avg_actor_loss /= self.epochs
         avg_critic_loss /= self.epochs
         avg_loss /= self.epochs
+        avg_qvalue /= self.epochs
+        avg_prob /= self.epochs
         loss_info = {
-            "avg_loss" : avg_loss,
-            "avg_actor_loss" : avg_actor_loss,
-            "avg_critic_loss" : avg_critic_loss,
+            "loss/avg_loss": avg_loss,
+            "loss/avg_actor_loss": avg_actor_loss,
+            "loss/avg_critic_loss": avg_critic_loss,
+            "output/avg_critic_qvalue": avg_qvalue,
+            "output/avg_actor_prob": avg_prob,
         }
         return loss_info
             

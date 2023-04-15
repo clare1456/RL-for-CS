@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import json
 import time
 import gurobipy as gp
+from CGAlgs import GraphTool
 from Net import Actor
 from models.MHA import MHA
 from models.model_efgat_v1 import GAT_EFA_Net
@@ -27,19 +28,43 @@ class SLDataLoader:
         # build MILPSolver
         self.milp_solver = MILPSolver()
         # read data and process data
-        data = self._read_data(file_name)
+        graph_path = "pretrain/dataset_solved/VRPTW_GH_instance/" + file_name + ".json"
+        columns_path = "pretrain/dataset_solved/VRPTW_GH_solved/" + file_name + ".json"
+        data = self._read_data(graph_path, columns_path)
         # split data into train/test data
         self.train_data, self.test_data = self._split_data(data=data, test_prop=test_prop)
     
-    def _read_data(self, file_name):
+    def _read_data(self, graph_path, columns_path):
         """read column generation process data from json file and process 
 
         Args:
-            file_name (string): file path in string form
+            graph_path (string): graph file path in string form
+            columns_path (string): columns file path in string form
         """
-        origin_data = json.load(open(file_name, 'r')) 
-        #todo, split data into mini-batch, and get nodeNum
-        self.nodeNum
+        # process graph data
+        graph_data = json.load(open(graph_path, 'r')) 
+        graph = GraphTool.Graph(graph_data)
+        self.nodeNum = graph.nodeNum
+        # process columns data
+        columns_data = json.load(open(columns_path, 'r'))
+        ## preprocess columns
+        columnSet = columns_data["columnSet"]
+        for name, column in columnSet.items():
+            path = column["path"]
+            onehot_path = np.zeros(self.nodeNum)
+            for node in path:
+                onehot_path[node] = 1
+            column["onehot_path"] = onehot_path
+        ## split iter columns
+        IterOfColumns = columns_data["IterOfColumns"]
+        mini_batches = []
+        present_columns = []
+        for cg_cnt, column_names in IterOfColumns:
+            mini_batch = {"present_columns": present_columns.copy(), "new_columns": []}
+            for name in column_names:
+                mini_batch["new_columns"].append(columnSet[name]) 
+                present_columns.append(columnSet[name]) 
+        # add labels to mini_batches with MILP
         self._get_labels(mini_batches)
         return self._minibatch2state(mini_batches)
     
@@ -47,22 +72,27 @@ class SLDataLoader:
         """add labels to mini_batches with MILP
 
         Args:
-            mini_batches (List[Dict]): iteration data for MILP, ["present_columns", "new_columns"], column: Dict["distance", "onehot_path"]
+            mini_batches (List[Dict]): iteration data for MILP
+                ["present_columns", "new_columns"](+"dual_values"), 
+                column: Dict["onehot_path", "distance"]
         """
         for mini_batch in mini_batches:
-            labels = self.milp_solver(mini_batch["present_columns"], mini_batch["new_columns"])
+            labels, dual_values = self.milp_solver(mini_batch["present_columns"], mini_batch["new_columns"], self.nodeNum)
             mini_batch["labels"] = labels
+            mini_batch["dual_values"] = dual_values
 
     def _minibatch2state(self, mini_batches):
         """transfer mini_batches to states 
 
         Args:
-            mini_batches (List[Dict]): iteration data for MILP, ["present_columns", "new_columns"], column: Dict["distance", "onehot_path"]
+            mini_batches (List[Dict]): iteration data for MILP, 
+                ["present_columns", "new_columns", "dual_values], 
+                column: Dict["onehot_path", "distance"]
 
         Returns:
             states (List[Dict]): ["columns_features", "constraints_feature"]
         """
-        # todo, 根据师兄产生数据设计
+        # todo 待设计特征 : 如是否为新旧列，是否为最优基等
         return states
     
     def _split_data(self, data, test_prop=0.1):
@@ -110,35 +140,39 @@ class MILPSolver:
         self.epsilon1 = epsilon1 # coef for present columns
         self.epsilon2 = epsilon2 # coef for new columns
 
-    def solve(self, present_columns, new_columns):
+    def solve(self, present_columns, new_columns, nodeNum):
         """ build model """
         # get data
-        columns = present_columns + new_columns
         epsilons = ([self.epsilon1 for _ in range(len(present_columns))] 
                     + [self.epsilon2 for _ in range(len(new_columns))])
-        nodeNum = len(columns["0"]["path"])
-        columnNum = len(columns)
         # building model
         MILP = gp.Model()
         # add columns into MILP
         ## add variables
-        theta_list = list(range(columnNum))
+        theta_list = list(range(len(present_columns)))
         theta = MILP.addVars(theta_list, vtype="C", name="theta")
         y = MILP.addVars(theta_list, vtype="I", name="y")
         ## set objective
-        MILP.setObjective(gp.quicksum((theta[i] * columns[f"{i}"]["distance"] + y[i] * epsilons[i]) for i in range(columnNum)), GRB.MINIMIZE)
+        MILP.setObjective(gp.quicksum((theta[i] * columns[i]["distance"] + y[i] * epsilons[i]) for i in range(len(present_columns))), GRB.MINIMIZE)
         ## set constraints
-        MILP.addConstrs(gp.quicksum(theta[i] * columns[f"{i}"]["path"][f"{j}"] for i in range(columnNum)) == 1 for j in range(1, nodeNum))
-        MILP.addConstrs(theta[i] <= y[i] for i in range(columnNum))
+        MILP.addConstrs(theta[i] <= y[i] for i in range(len(present_columns)))
+        MILP.addConstrs(gp.quicksum(theta[i] * columns[i]["onhot_path"][j] for i in range(len(present_columns))) == 1 for j in range(1, nodeNum))
         ## set params
         MILP.setParam("OutputFlag", 0)
 
-        """ solve model """
+        """ solve present model to get dual values"""
+        MILP.optimize()
+        dual_values = MILP.getAttr("Pi", MILP.getConstrs())
+        """ solve new model to get labels"""
+        columnNum = len(present_columns)
+        for column_info in new_columns:
+            column = gp.Column(column_info['distance'], column_info['onehot_path'], "y{}".format(columnNum)) 
+            columnNum += 1
         MILP.optimize()
         labels = []
         for i in range(columnNum):
             labels.append(round(y[i].X))
-        return labels
+        return labels, dual_values
     
 
 class SLTrainer:
@@ -207,7 +241,7 @@ class SLTrainer:
         return np.mean(loss_list)
 
 if __name__ == "__main__":
-    file_name = ""
+    file_name = "pretrain\dataset_solved\VRPTW_GH_solverd\C1_2_1.json"
     trainer = SLTrainer(file_name)
     start = time.time()
     trainer.train()

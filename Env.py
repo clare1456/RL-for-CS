@@ -21,9 +21,12 @@ class CGEnv(gym.Env):
         self.instance = "initial"
         self.limit_node_num = args.limit_node_num
         self.max_step = args.max_step # max iteration in one episode
-        self.alpha = 0.1 # reward rate of obj improvement
+        self.instance = args.instance
+        file_path = "problems\{}.txt".format(self.instance)
+        self.graph = GraphTool.Graph(file_path, self.limit_node_num)
+        self.alpha = 100 # reward rate of obj improvement
         # action_space, observation_space updates 
-        self.step_cost = 10 # step punishment in reward
+        self.step_cost = 1 # step punishment in reward
 
     def reset(self, instance=None):
         # reset Column Generation Algorithm
@@ -53,7 +56,7 @@ class CGEnv(gym.Env):
         """ get state, reward, done, info """
         state = self.CGAlg.get_column_selection_info()
         info = {}
-        reward = self.alpha * (obj_before - obj_after) / self.obj_init - self.step_cost
+        reward = self.alpha * (obj_before - obj_after) / (self.obj_init + 1e-8) - self.step_cost
         done = 0
         self.iter_cnt += 1
         if CG_flag == 1 or self.iter_cnt >= self.max_step:
@@ -148,7 +151,7 @@ class CGWithSelection(ColumnGeneration.ColumnGenerationWithLabeling):
 if __name__ == "__main__":
     class Args:
         instance = "R101"
-        limit_node_num = 50
+        limit_node_num = 30
         max_step = 30
 
     args = Args()

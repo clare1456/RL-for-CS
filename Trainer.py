@@ -77,7 +77,7 @@ def trainOffPolicy(policy, args, res_queue, outputFlag=False, seed=0):
                 loss_info = policy.update(buffer, critic_1_optim, critic_2_optim, actor_optim, alpha_optim)
                 # record loss information
                 for key, value in loss_info.items():
-                    res_queue.put({"tag" : "loss/" + key, "value" : value, "step" : epi+1})
+                    res_queue.put({"tag" : key, "value" : value, "step" : epi+1})
             step_cnt += 1
         ep_rewards.append(ep_reward)
         # record result information
@@ -136,7 +136,7 @@ def trainOnPolicy(policy, args, res_queue, outputFlag=False, seed=0):
         if (epi + 1) % args.update_eps == 0:
             loss_info = policy.update(transition_dict, actor_optim, critic_optim)
             for key, value in loss_info.items():
-                res_queue.put({"tag" : "loss/" + key, "value" : value, "step" : epi+1})
+                res_queue.put({"tag" : key, "value" : value, "step" : epi+1})
         # record result information
         res_queue.put({"tag" : "result/reward", "value" : ep_reward, "step" : epi+1})
         res_queue.put({"tag" : "result/finalObj", "value" : env.get_final_RLMP_obj(), "step" : epi+1})
