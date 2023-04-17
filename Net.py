@@ -21,7 +21,7 @@ class Actor(nn.Module):
         preprocess_net: nn.Module,
         hidden_dim: int = 128,
         softmax_output: bool = True,
-        device: Union[str, int, torch.device] = "cpu",
+        device: Union[str, int, torch.device] = torch.device("cpu"),
     ) -> None:
         super().__init__()
         self.device = device
