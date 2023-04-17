@@ -5,6 +5,7 @@ File Created: Monday, 17th April 2023 9:24:54 am
 Author: Charles Lee (lmz22@mails.tsinghua.edu.cn)
 '''
 
+import os
 import sys
 sys.path.append("D:\Code\RL-for-CS")
 import numpy as np
@@ -183,7 +184,8 @@ class SLProcessor:
 
 if __name__ == "__main__":
     # set file list
-    file_list = ["C1_2_1"]
+    total_file_list = os.listdir("pretrain/dataset_solved/VRPTW_GH_instance/") 
+    file_list = [file_name[:-5] for file_name in total_file_list][:3]
     # set save path
     save_path = "pretrain/dataset_processed/"
     # run

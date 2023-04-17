@@ -6,7 +6,7 @@ Author: Charles Lee (lmz22@mails.tsinghua.edu.cn)
 '''
 
 import os
-os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
+# os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
 import sys
 sys.path.append("D:\Code\RL-for-CS")
 import torch, numpy as np
@@ -19,6 +19,7 @@ from CGAlgs import GraphTool
 from Net import Actor
 from models.MHA import MHA
 from models.model_efgat_v1 import GAT_EFA_Net
+from models.GAT import GAT
 
 class SLActor(Actor):
     def save_net(self, path):
@@ -29,11 +30,14 @@ class SLTrainer:
     def __init__(self, file_name):
         self.file_name = file_name
         # set params
-        self.net = "MHA"
-        self.epochNum = 10
-        self.learning_rate = 1e-5
+        self.net = "GAT"
+        self.epochNum = 5
+        self.batch_size = 32
+        self.learning_rate = 1e-4
         self.test_prop = 0.1
         self.test_freq = 10
+        self.weight_0 = 1
+        self.weight_1 = 50
         self.seed = 1
         self.curr_path = os.path.dirname(os.path.abspath(__file__)) # 当前文件所在绝对路径
         self.curr_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")  # 获取当前时间 
@@ -41,16 +45,13 @@ class SLTrainer:
             '/'+self.curr_time+'/results/'  # 保存结果的路径
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # build data 
-        graph_path = "pretrain/dataset_solved/VRPTW_GH_instance/" + file_name + ".json"
-        self.graph = GraphTool.Graph(graph_path)
-        self.nodeNum = self.graph.nodeNum
-        self.mini_batches = json.load(open("D:\Code\RL-for-CS\pretrain\dataset_processed\mini_batches_1.json"))
+        self.mini_batches = json.load(open("D:\Code\RL-for-CS\pretrain\dataset_processed\{}.json".format(file_name)))
         self.train_data, self.test_data = self.preprocess_data(self.mini_batches, self.test_prop)
         # build model
-        if self.net== "MHA":
+        if self.net == "MHA":
             net = MHA(input_dim=3, embed_dim=128, hidden_dim=128, device=self.device)
-        elif self.net== "GAT":
-            net = GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, nhid = 64, maxNodeNum=self.nodeNum)
+        elif self.net == "GAT":
+            net = GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=128)
         self.actor = SLActor(net)
         self.optim = torch.optim.Adam(self.actor.parameters(), lr=self.learning_rate)
     
@@ -108,41 +109,67 @@ class SLTrainer:
         self._log_params()
         data_epochs = self.get_epochs(self.epochNum) 
         iter_cnt = 0
+        loss = 0.0
+        self.optim.zero_grad()
         for epoch in range(self.epochNum):
             states = data_epochs[epoch]
             for state in states:
                 output = self.actor(state)[:, 1]
                 labels = torch.FloatTensor(state["labels"])
                 # calculate mse loss #? use probability or selection to calculate loss
-                mse_loss = torch.nn.MSELoss()
-                loss = mse_loss(output, labels) 
-                torch.nn.MSELoss()
+                weights = np.array([self.weight_0 if label == 0 else self.weight_1 for label in labels])
+                loss += torch.mean(torch.FloatTensor(weights) * torch.pow(output - labels, 2))
                 # optimizer step
-                self.optim.zero_grad()
-                loss.backward()
-                self.optim.step()
+                if iter_cnt % self.batch_size == 0:
+                    loss.backward()
+                    self.optim.step()
+                    self.optim.zero_grad()
+                    self.logger.add_scalar("loss/train_loss", loss.detach().numpy() / self.batch_size, iter_cnt)
+                    loss = 0.0
                 # test 
                 if iter_cnt % self.test_freq == 0:
-                    mean_test_loss = self.test()
+                    mean_test_loss, accuracy_1, accuracy_0, accuracy_weighted = self.test()
                     self.logger.add_scalar("loss/test_loss", mean_test_loss, iter_cnt)
+                    self.logger.add_scalar("accuracy/accuracy_1", accuracy_1, iter_cnt)
+                    self.logger.add_scalar("accuracy/accuracy_0", accuracy_0, iter_cnt)
+                    self.logger.add_scalar("accuracy/accuracy_weighted", accuracy_weighted, iter_cnt)
                 # record process
-                self.logger.add_scalar("loss/train_loss", loss.detach().numpy(), iter_cnt)
                 iter_cnt += 1
 
     @torch.no_grad() 
     def test(self):
         loss_list = []
+        # accuracy weight : 1 -> 10, 0 -> 1
+        total_num_1 = 0
+        total_num_0 = 0
+        correct_num_1 = 0
+        correct_num_0 = 0
         for state in self.test_data:
             output = self.actor(state)[:, 1]
+            choices = np.array([1 if np.random.rand() < prob else 0 for prob in output])
             labels = torch.FloatTensor(state["labels"])
             # calculate mse loss #? use probability or selection to calculate loss
             mse_loss = torch.nn.MSELoss()
             loss = mse_loss(output, labels).detach().numpy()
             loss_list.append(loss)
-        return np.mean(loss_list)
+            # record result
+            for i in range(len(choices)):
+                if labels[i] == 1:
+                    if choices[i] == labels[i]:
+                        correct_num_1 += 1
+                    total_num_1 += 1
+                else:
+                    if choices[i] == labels[i]:
+                        correct_num_0 += 1
+                    total_num_0 += 1
+        # calculate accuracy
+        accuracy_1 = correct_num_1 / total_num_1
+        accuracy_0 = correct_num_0 / total_num_0
+        accuracy_weighted = (correct_num_1 * self.weight_1 + correct_num_0 * self.weight_0) / (total_num_1 * self.weight_1 + total_num_0 * self.weight_0)
+        return np.mean(loss_list), accuracy_1, accuracy_0, accuracy_weighted
 
 if __name__ == "__main__":
-    file_name = "C1_2_1"
+    file_name = "mini_batches_5"
     trainer = SLTrainer(file_name)
     start = time.time()
     trainer.train()

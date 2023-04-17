@@ -138,10 +138,10 @@ class GAT_EFA_Net(GAT_EFA):
         adj = torch.FloatTensor(state["adj"]).to(self.device)
         # x_c, x_tw, x_d, x_disMatrix, x_adj  = x_graph
         batch = len(columns_state)
-        x_loc = constraints_state[:, 0:2][None].repeat(batch, 1, 1) #!check
-        x_tw = constraints_state[:, 2:4][None].repeat(batch, 1, 1) #!check
-        x_d = constraints_state[:, 4:5][None].repeat(batch, 1, 1) #!check
-        x_dual = constraints_state[:, 5:6][None].repeat(batch, 1, 1) #!check
+        x_loc = constraints_state[:, 0:2][None].repeat(batch, 1, 1) 
+        x_tw = constraints_state[:, 2:4][None].repeat(batch, 1, 1) 
+        x_d = constraints_state[:, 4:5][None].repeat(batch, 1, 1) 
+        x_dual = constraints_state[:, 5:6][None].repeat(batch, 1, 1) 
         # dim,obj,distance,path,dualValue = x_column
         reduced_cost = columns_state[:, 0:1]
         distance = columns_state[:, 1:2]

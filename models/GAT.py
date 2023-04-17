@@ -11,23 +11,22 @@ import torch.nn.functional as F
 from torch_geometric.nn import GATConv
 
 class GAT(nn.Module):
-    def __init__(self, node_feature_dim, column_feature_dim, hidden_dim=128, heads=8, dropout=0.2):
+    def __init__(self, node_feature_dim, column_feature_dim, embed_dim, hidden_dim=128, heads=8, dropout=0.2):
         super().__init__()
         self.name = "GAT"
         # build network 
+        self.embed_dim = embed_dim
         self.node_linear = nn.Linear(node_feature_dim, hidden_dim)
         self.column_linear = nn.Linear(column_feature_dim, hidden_dim)
         self.conv1 = GATConv(hidden_dim, hidden_dim, heads=heads, dropout=dropout) # node to column
         self.conv2 = GATConv(hidden_dim*heads, hidden_dim, dropout=dropout) # column to node
         self.output = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim//2), 
-            nn.ReLU(), 
-            nn.Linear(hidden_dim//2, 1)
+            nn.Linear(hidden_dim, embed_dim), 
         )
 
     def forward(self, state):
-        node_features = state["node_features"]
-        column_features = state["column_features"]
+        node_features = state["constraints_state"]
+        column_features = state["columns_state"]
         edges = state["edges"]
         # transfer to tensor if type is not tensor
         if not isinstance(node_features, torch.Tensor):
@@ -43,8 +42,8 @@ class GAT(nn.Module):
         embeddings = torch.cat([node_embeddings, column_embeddings], dim=0)
         embeddings = F.relu(self.conv1(embeddings, edges)) # node to column
         embeddings = F.relu(self.conv2(embeddings, torch.flip(edges, [1]))) # column to node
-        logits = self.output(embeddings[:self.args.node_num]) # get node logits
-        return logits.squeeze(1)
+        logits = self.output(embeddings[-len(column_features):]) # get columns logits
+        return logits
 
     def save_model(self, path):
         torch.save(self.state_dict(), path + self.name + '.pth')
