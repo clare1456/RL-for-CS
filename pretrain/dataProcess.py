@@ -185,7 +185,7 @@ class SLProcessor:
 if __name__ == "__main__":
     # set file list
     total_file_list = os.listdir("pretrain/dataset_solved/VRPTW_GH_instance/") 
-    file_list = [file_name[:-5] for file_name in total_file_list][:3]
+    file_list = [file_name[:-5] for file_name in total_file_list][:20]
     # set save path
     save_path = "pretrain/dataset_processed/"
     # run

@@ -31,7 +31,7 @@ class SLTrainer:
         self.file_name = file_name
         # set params
         self.net = "GAT"
-        self.epochNum = 5
+        self.epochNum = 10
         self.batch_size = 32
         self.learning_rate = 1e-4
         self.test_prop = 0.1
@@ -169,7 +169,7 @@ class SLTrainer:
         return np.mean(loss_list), accuracy_1, accuracy_0, accuracy_weighted
 
 if __name__ == "__main__":
-    file_name = "mini_batches_5"
+    file_name = "mini_batches_20"
     trainer = SLTrainer(file_name)
     start = time.time()
     trainer.train()
