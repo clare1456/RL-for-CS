@@ -8,7 +8,7 @@ Author: Charles Lee (lmz22@mails.tsinghua.edu.cn)
 import os
 # os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
 import sys
-sys.path.append("D:\Code\RL-for-CS")
+sys.path.append("D:\\Users\\limingzhe\\RL-for-CS")
 import torch, numpy as np
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
@@ -31,11 +31,11 @@ class SLTrainer:
         self.file_name = file_name
         # set params
         self.net = "GAT"
-        self.epochNum = 10
-        self.batch_size = 32
+        self.epochNum = 20
+        self.batch_size = 128
         self.learning_rate = 1e-4
         self.test_prop = 0.1
-        self.test_freq = 10
+        self.test_freq = 128
         self.weight_0 = 1
         self.weight_1 = 50
         self.seed = 1
@@ -45,7 +45,7 @@ class SLTrainer:
             '/'+self.curr_time+'/results/'  # 保存结果的路径
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # build data 
-        self.mini_batches = json.load(open("D:\Code\RL-for-CS\pretrain\dataset_processed\{}.json".format(file_name)))
+        self.mini_batches = json.load(open(self.curr_path + "\dataset_processed\{}.json".format(file_name)))
         self.train_data, self.test_data = self.preprocess_data(self.mini_batches, self.test_prop)
         # build model
         if self.net == "MHA":

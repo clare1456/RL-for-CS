@@ -11,13 +11,14 @@ import torch.nn.functional as F
 from torch_geometric.nn import GATConv
 
 class GAT(nn.Module):
-    def __init__(self, node_feature_dim, column_feature_dim, embed_dim, hidden_dim=128, heads=8, dropout=0.2):
+    def __init__(self, node_feature_dim, column_feature_dim, embed_dim, hidden_dim=128, heads=8, dropout=0.2, feature_gain=2):
         super().__init__()
         self.name = "GAT"
         # build network 
         self.embed_dim = embed_dim
-        self.node_linear = nn.Linear(node_feature_dim, hidden_dim)
-        self.column_linear = nn.Linear(column_feature_dim, hidden_dim)
+        self.feature_gain = feature_gain
+        self.node_linear = nn.Linear(node_feature_dim*feature_gain, hidden_dim)
+        self.column_linear = nn.Linear(column_feature_dim*feature_gain, hidden_dim)
         self.conv1 = GATConv(hidden_dim, hidden_dim, heads=heads, dropout=dropout) # node to column
         self.conv2 = GATConv(hidden_dim*heads, hidden_dim, dropout=dropout) # column to node
         self.output = nn.Sequential(
@@ -35,6 +36,9 @@ class GAT(nn.Module):
             column_features = torch.tensor(column_features, dtype=torch.float)
         if not isinstance(edges, torch.Tensor):
             edges = torch.tensor(edges, dtype=torch.long)
+        # feature gain
+        node_features = node_features.repeat(1, self.feature_gain)
+        column_features = column_features.repeat(1, self.feature_gain)
         # network calculation 
         node_embeddings = F.relu(self.node_linear(node_features))
         column_embeddings = F.relu(self.column_linear(column_features))
