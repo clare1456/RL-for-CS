@@ -116,7 +116,7 @@ class SLProcessor:
                 ["present_columns", "new_columns"](+"dual_values"), 
                 column: Dict["onehot_path", "distance"]
         """
-        for mini_batch in tqdm.tqdm(mini_batches):
+        for mini_batch in mini_batches:
             labels, dual_values = self.milp_solver.solve(mini_batch["present_columns"], mini_batch["new_columns"], self.nodeNum)
             mini_batch["labels"] = labels
             mini_batch["dual_values"] = dual_values
@@ -176,8 +176,11 @@ class SLProcessor:
     
     def run(self):
         states = []
-        for file_name in self.file_list:
-            states += self.single_process(file_name)
+        for file_name in tqdm.tqdm(self.file_list):
+            try:
+                states += self.single_process(file_name)
+            except:
+                print("Something Wrong in instance {}, skipped".format(file_name))
         with open(self.save_path + f"mini_batches_{len(self.file_list)}.json", 'w') as f:
             json.dump(states, f)
 
@@ -185,7 +188,7 @@ class SLProcessor:
 if __name__ == "__main__":
     # set file list
     total_file_list = os.listdir("pretrain/dataset_solved/VRPTW_GH_instance/") 
-    file_list = [file_name[:-5] for file_name in total_file_list][:20]
+    file_list = [file_name[:-5] for file_name in total_file_list]
     # set save path
     save_path = "pretrain/dataset_processed/"
     # run
