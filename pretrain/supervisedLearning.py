@@ -35,9 +35,9 @@ class SLTrainer:
         self.batch_size = 128
         self.learning_rate = 1e-4
         self.test_prop = 0.1
-        self.test_freq = 128
+        self.test_freq = 24
         self.weight_0 = 1
-        self.weight_1 = 50
+        self.weight_1 = 15
         self.seed = 1
         self.curr_path = os.path.dirname(os.path.abspath(__file__)) # 当前文件所在绝对路径
         self.curr_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")  # 获取当前时间 
@@ -128,24 +128,35 @@ class SLTrainer:
                     loss = 0.0
                 # test 
                 if iter_cnt % self.test_freq == 0:
-                    mean_test_loss, accuracy_1, accuracy_0, accuracy_weighted = self.test()
+                    mean_test_loss, accuracy_1, accuracy_0, accuracy_weighted, predict_time = self.test()
                     self.logger.add_scalar("loss/test_loss", mean_test_loss, iter_cnt)
                     self.logger.add_scalar("accuracy/accuracy_1", accuracy_1, iter_cnt)
                     self.logger.add_scalar("accuracy/accuracy_0", accuracy_0, iter_cnt)
                     self.logger.add_scalar("accuracy/accuracy_weighted", accuracy_weighted, iter_cnt)
+                    self.logger.add_scalar("output/predict_time", predict_time, iter_cnt)
                 # record process
                 iter_cnt += 1
+        # last optimize
+        if iter_cnt % self.batch_size > 0:
+            loss.backward()
+            self.optim.step()
+            self.logger.add_scalar("loss/train_loss", loss.detach().numpy() / (iter_cnt % self.batch_size), iter_cnt)
 
     @torch.no_grad() 
     def test(self):
         loss_list = []
+        predict_time_list = []
         # accuracy weight : 1 -> 10, 0 -> 1
         total_num_1 = 0
         total_num_0 = 0
         correct_num_1 = 0
         correct_num_0 = 0
         for state in self.test_data:
+            # predict and record predict time
+            time1 = time.time()
             output = self.actor(state)[:, 1]
+            time2 = time.time()
+            predict_time_list.append(time2-time1)
             choices = np.array([1 if np.random.rand() < prob else 0 for prob in output])
             labels = torch.FloatTensor(state["labels"])
             # calculate mse loss #? use probability or selection to calculate loss
@@ -166,10 +177,10 @@ class SLTrainer:
         accuracy_1 = correct_num_1 / total_num_1
         accuracy_0 = correct_num_0 / total_num_0
         accuracy_weighted = (correct_num_1 * self.weight_1 + correct_num_0 * self.weight_0) / (total_num_1 * self.weight_1 + total_num_0 * self.weight_0)
-        return np.mean(loss_list), accuracy_1, accuracy_0, accuracy_weighted
+        return np.mean(loss_list), accuracy_1, accuracy_0, accuracy_weighted, np.mean(predict_time_list)
 
 if __name__ == "__main__":
-    file_name = "mini_batches_20"
+    file_name = "mini_batches_90"
     trainer = SLTrainer(file_name)
     start = time.time()
     trainer.train()
