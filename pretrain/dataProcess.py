@@ -26,24 +26,6 @@ class MILPSolver:
         epsilons = ([self.epsilon1 for _ in range(len(present_columns))] 
                     + [self.epsilon2 for _ in range(len(new_columns))])
 
-        """ solve present model to get dual values"""
-        # building model
-        RLMP = gp.Model("RLMP")
-        # add columns into RLMP
-        ## add variables
-        theta_list = list(range(len(present_columns)))
-        theta = RLMP.addVars(theta_list, vtype="C", name="theta")
-        ## set objective
-        RLMP.setObjective(gp.quicksum((theta[i] * present_columns[i]["distance"]) for i in range(len(present_columns))), gp.GRB.MINIMIZE)
-        ## set constraints
-        RLMP.addConstr(gp.quicksum(theta) <= len(present_columns))
-        RLMP.addConstrs(gp.quicksum(theta[i] * present_columns[i]["onehot_path"][j] for i in range(len(present_columns))) >= 1 for j in range(1, nodeNum))
-        ## set params
-        RLMP.setParam("OutputFlag", 0)
-        RLMP.optimize()
-        # get dual values
-        dual_values = RLMP.getAttr("Pi", RLMP.getConstrs())
-
         """ solve new model to get labels"""
         # building model
         MILP = gp.Model("MILP")
@@ -64,7 +46,7 @@ class MILPSolver:
         labels = []
         for i in range(len(columns)):
             labels.append(round(y[i].X))
-        return labels, dual_values
+        return labels
  
 
 class SLProcessor:
@@ -88,6 +70,7 @@ class SLProcessor:
         columns_data = json.load(open(columns_path, 'r'))
         ## preprocess columns
         columnSet = columns_data["columnSet"]
+        IterDualValues = columns_data["IterDualValues"] 
         for name, column in columnSet.items():
             path = column["path"]
             onehot_path = np.zeros(self.nodeNum)
@@ -105,6 +88,7 @@ class SLProcessor:
                 mini_batch["new_columns"].append(columnSet[name]) 
                 present_columns.append(columnSet[name]) 
             if len(mini_batch["present_columns"]) > 0:
+                mini_batch["dual_value"] = IterDualValues[cg_cnt]
                 mini_batches.append(mini_batch)
         return mini_batches, graph
     
@@ -113,13 +97,12 @@ class SLProcessor:
 
         Args:
             mini_batches (List[Dict]): iteration data for MILP
-                ["present_columns", "new_columns"](+"dual_values"), 
+                ["present_columns", "new_columns", "dual_values"]
                 column: Dict["onehot_path", "distance"]
         """
         for mini_batch in mini_batches:
-            labels, dual_values = self.milp_solver.solve(mini_batch["present_columns"], mini_batch["new_columns"], self.nodeNum)
+            labels = self.milp_solver.solve(mini_batch["present_columns"], mini_batch["new_columns"], self.nodeNum)
             mini_batch["labels"] = labels
-            mini_batch["dual_values"] = dual_values
 
     def _minibatch2state(self, mini_batches, graph):
         """transfer mini_batches to states 
