@@ -58,7 +58,7 @@ class SLTrainer:
             net = MHA(input_dim=3, embed_dim=128, hidden_dim=128, device=args.device)
         elif args.net == "GAT":
             net = GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
-        self.actor = SLActor(net)
+        self.actor = SLActor(net, device=args.device)
         self.optim = torch.optim.Adam(self.actor.parameters(), lr=args.learning_rate)
     
     def preprocess_data(self, data, test_prop):
@@ -100,8 +100,8 @@ class SLTrainer:
         return epochs
 
     def cal_weighted_loss(self, output, labels):
-        weights = np.array([self.args.weight_0 if label == 0 else self.args.weight_1 for label in labels])
-        weighted_loss = torch.mean(torch.FloatTensor(weights) * torch.pow((output - labels), 2))
+        weights = torch.FloatTensor([self.args.weight_0 if label == 0 else self.args.weight_1 for label in labels]).to(self.args.device)
+        weighted_loss = torch.mean((weights)* torch.pow((output - labels), 2))
         return weighted_loss
 
     def train(self):
@@ -116,7 +116,7 @@ class SLTrainer:
             states = data_epochs[epoch]
             for state in states:
                 output = self.actor(state)[:, 1]
-                labels = torch.FloatTensor(state["labels"])
+                labels = torch.FloatTensor(state["labels"]).to(self.args.device)
                 # calculate weighted mse loss 
                 loss += self.cal_weighted_loss(output, labels)
                 # optimizer step
@@ -124,7 +124,7 @@ class SLTrainer:
                     loss.backward()
                     self.optim.step()
                     self.optim.zero_grad()
-                    avg_loss = loss.detach().numpy() / self.args.batch_size
+                    avg_loss = loss.cpu().detach().numpy() / self.args.batch_size
                     if self.args.save:
                         self.logger.add_scalar("loss/train_loss", avg_loss, iter_cnt)
                     loss = 0.0
@@ -162,9 +162,9 @@ class SLTrainer:
             time2 = time.time()
             predict_time_list.append(time2-time1)
             choices = np.array([1 if np.random.rand() < prob else 0 for prob in output])
-            labels = torch.FloatTensor(state["labels"])
+            labels = torch.FloatTensor(state["labels"]).to(self.args.device)
             # calculate mse loss 
-            loss = self.cal_weighted_loss(output, labels).detach().numpy()
+            loss = self.cal_weighted_loss(output, labels).cpu().detach().numpy()
             loss_list.append(loss)
             # record result
             for i in range(len(choices)):

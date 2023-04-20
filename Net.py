@@ -89,15 +89,15 @@ class MLP(nn.Module):
         # 根据 hidden sizes 搭建神经网络
         self.device = device
         self.process = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim), 
+            nn.Linear(input_dim, hidden_dim).to(device), 
             nn.ReLU(), 
-            nn.Linear(hidden_dim, output_dim), 
+            nn.Linear(hidden_dim, output_dim).to(device), 
         )
         self.process.to(device=device)
     
     def forward(self, x):
         # 检查类型
         if isinstance(x, torch.Tensor) == False:
-            x = torch.Tensor(x)
+            x = torch.Tensor(x).to(self.device)
         # 输出结果
         return self.process(x)
