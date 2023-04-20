@@ -8,7 +8,8 @@ Author: Charles Lee (lmz22@mails.tsinghua.edu.cn)
 import os
 # os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
 import sys
-sys.path.append("D:\\Users\\limingzhe\\RL-for-CS")
+parent_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_path)
 import torch, numpy as np
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
@@ -21,21 +22,16 @@ from models.MHA import MHA
 from models.model_efgat_v1 import GAT_EFA_Net
 from models.GAT import GAT
 
-class SLActor(Actor):
-    def save_net(self, path):
-        torch.save(self.net.state_dict(), path+"net.pth")
-
-   
-class SLTrainer:
-    def __init__(self, file_name):
-        self.file_name = file_name
-        # set params
+class Args:
+    def __init__(self):
+        self.save = 0
+        self.file_name = "mini_batches_1"
         self.net = "GAT"
         self.epochNum = 20
         self.batch_size = 128
         self.learning_rate = 1e-4
         self.test_prop = 0.1
-        self.test_freq = 24
+        self.test_freq = 2
         self.weight_0 = 1
         self.weight_1 = 15
         self.seed = 1
@@ -44,23 +40,27 @@ class SLTrainer:
         self.result_path = self.curr_path+"/outputs/" + self.file_name + \
             '/'+self.curr_time+'/results/'  # 保存结果的路径
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+class SLActor(Actor):
+    def save_net(self, path):
+        torch.save(self.net.state_dict(), path+"net.pth")
+
+   
+class SLTrainer:
+    def __init__(self, args):
+        # save args
+        self.args = args
         # build data 
-        self.mini_batches = json.load(open(self.curr_path + "\dataset_processed\{}.json".format(file_name)))
-        self.train_data, self.test_data = self.preprocess_data(self.mini_batches, self.test_prop)
+        self.mini_batches = json.load(open(args.curr_path + "\dataset_processed\{}.json".format(args.file_name)))
+        self.train_data, self.test_data = self.preprocess_data(self.mini_batches, args.test_prop)
         # build model
-        if self.net == "MHA":
+        if args.net == "MHA":
             net = MHA(input_dim=3, embed_dim=128, hidden_dim=128, device=self.device)
-        elif self.net == "GAT":
+        elif args.net == "GAT":
             net = GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=128)
         self.actor = SLActor(net)
-        self.optim = torch.optim.Adam(self.actor.parameters(), lr=self.learning_rate)
-    
-    def _log_params(self):
-        self.logger.add_text("net", self.net)  
-        self.logger.add_text("learning_rate", str(self.learning_rate))  
-        self.logger.add_text("test_prop", str(self.test_prop))  
-        self.logger.add_text("test_freq", str(self.test_freq))  
-        self.logger.add_text("seed", str(self.seed))  
+        self.optim = torch.optim.Adam(self.actor.parameters(), lr=args.learning_rate)
     
     def preprocess_data(self, data, test_prop):
         """preprocess and split data into train_data and test_data
@@ -80,7 +80,7 @@ class SLTrainer:
             state["constraints_state"] = state["constraints_features"]
             state.pop("constraints_features")
         # randomly shuffle dataset
-        np.random.seed(self.seed)
+        np.random.seed(self.args.seed)
         np.random.shuffle(data)
         # split data into train/test data
         test_size = round(len(data) * test_prop)
@@ -97,56 +97,67 @@ class SLTrainer:
         Returns:
             epochs: data epochs
         """
-        np.random.seed(self.seed)
+        np.random.seed(args.seed)
         epochs = [] 
         for i in range(epochNum):
             np.random.shuffle(self.train_data) 
             epochs.append(self.train_data.copy()) 
         return epochs
 
+    def cal_weighted_loss(self, output, labels):
+        weights = np.array([self.args.weight_0 if label == 0 else self.args.weight_1 for label in labels])
+        weighted_loss = torch.mean(torch.pow(torch.FloatTensor(weights) * (output - labels), 2))
+        return weighted_loss
+
     def train(self):
-        self.logger = SummaryWriter(self.result_path + "pretrain_event") 
-        self._log_params()
-        data_epochs = self.get_epochs(self.epochNum) 
+        if self.args.save:
+            self.logger = SummaryWriter(self.result_path + "pretrain_event") 
+            self.logger.add_text("args", self.args.__dict__)
+        data_epochs = self.get_epochs(self.args.epochNum) 
         iter_cnt = 0
         loss = 0.0
         self.optim.zero_grad()
-        for epoch in range(self.epochNum):
+        for epoch in range(self.args.epochNum):
             states = data_epochs[epoch]
             for state in states:
                 output = self.actor(state)[:, 1]
                 labels = torch.FloatTensor(state["labels"])
-                # calculate mse loss #? use probability or selection to calculate loss
-                weights = np.array([self.weight_0 if label == 0 else self.weight_1 for label in labels])
-                loss += torch.mean(torch.FloatTensor(weights) * torch.pow(output - labels, 2))
+                # calculate weighted mse loss 
+                loss += self.cal_weighted_loss(output, labels)
                 # optimizer step
-                if iter_cnt % self.batch_size == 0:
+                if iter_cnt % self.args.batch_size == 0:
                     loss.backward()
                     self.optim.step()
                     self.optim.zero_grad()
-                    self.logger.add_scalar("loss/train_loss", loss.detach().numpy() / self.batch_size, iter_cnt)
+                    avg_loss = loss.detach().numpy() / self.args.batch_size
+                    if self.args.save:
+                        self.logger.add_scalar("loss/train_loss", avg_loss, iter_cnt)
+                    print("Iter {}: train_loss == {:.2f}".format(iter_cnt, avg_loss))
                     loss = 0.0
-                # test 
-                if iter_cnt % self.test_freq == 0:
-                    mean_test_loss, accuracy_1, accuracy_0, accuracy_weighted, predict_time = self.test()
-                    self.logger.add_scalar("loss/test_loss", mean_test_loss, iter_cnt)
-                    self.logger.add_scalar("accuracy/accuracy_1", accuracy_1, iter_cnt)
-                    self.logger.add_scalar("accuracy/accuracy_0", accuracy_0, iter_cnt)
-                    self.logger.add_scalar("accuracy/accuracy_weighted", accuracy_weighted, iter_cnt)
-                    self.logger.add_scalar("output/predict_time", predict_time, iter_cnt)
+                    # test 
+                    if (iter_cnt // self.args.batch_size) % self.args.test_freq == 0:
+                        avg_test_loss, accuracy_1, accuracy_0, accuracy_weighted, predict_time = self.test()
+                        if self.args.save:
+                            self.logger.add_scalar("loss/test_loss", avg_test_loss, iter_cnt)
+                            self.logger.add_scalar("accuracy/accuracy_1", accuracy_1, iter_cnt)
+                            self.logger.add_scalar("accuracy/accuracy_0", accuracy_0, iter_cnt)
+                            self.logger.add_scalar("accuracy/accuracy_weighted", accuracy_weighted, iter_cnt)
+                            self.logger.add_scalar("output/predict_time", predict_time, iter_cnt)
+                        print("Iter {}:                       test_loss == {:.2f}".format(iter_cnt, avg_test_loss))
                 # record process
                 iter_cnt += 1
-        # last optimize
-        if iter_cnt % self.batch_size > 0:
+        # final optimize
+        if iter_cnt % self.args.batch_size > 0:
             loss.backward()
             self.optim.step()
-            self.logger.add_scalar("loss/train_loss", loss.detach().numpy() / (iter_cnt % self.batch_size), iter_cnt)
+            if self.args.save:
+                self.logger.add_scalar("loss/train_loss", loss.detach().numpy() / (iter_cnt % self.batch_size), iter_cnt)
 
     @torch.no_grad() 
     def test(self):
         loss_list = []
         predict_time_list = []
-        # accuracy weight : 1 -> 10, 0 -> 1
+        # accuracy weight 
         total_num_1 = 0
         total_num_0 = 0
         correct_num_1 = 0
@@ -159,9 +170,8 @@ class SLTrainer:
             predict_time_list.append(time2-time1)
             choices = np.array([1 if np.random.rand() < prob else 0 for prob in output])
             labels = torch.FloatTensor(state["labels"])
-            # calculate mse loss #? use probability or selection to calculate loss
-            mse_loss = torch.nn.MSELoss()
-            loss = mse_loss(output, labels).detach().numpy()
+            # calculate mse loss 
+            loss = self.cal_weighted_loss(output, labels).detach().numpy()
             loss_list.append(loss)
             # record result
             for i in range(len(choices)):
@@ -176,12 +186,13 @@ class SLTrainer:
         # calculate accuracy
         accuracy_1 = correct_num_1 / total_num_1
         accuracy_0 = correct_num_0 / total_num_0
-        accuracy_weighted = (correct_num_1 * self.weight_1 + correct_num_0 * self.weight_0) / (total_num_1 * self.weight_1 + total_num_0 * self.weight_0)
+        accuracy_weighted = ((correct_num_1 * self.args.weight_1 + correct_num_0 * self.args.weight_0) 
+                             / (total_num_1 * self.args.weight_1 + total_num_0 * self.args.weight_0))
         return np.mean(loss_list), accuracy_1, accuracy_0, accuracy_weighted, np.mean(predict_time_list)
 
 if __name__ == "__main__":
-    file_name = "mini_batches_90"
-    trainer = SLTrainer(file_name)
+    args = Args()
+    trainer = SLTrainer(args)
     start = time.time()
     trainer.train()
     time_cost = time.time() - start

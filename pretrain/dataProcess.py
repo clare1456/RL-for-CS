@@ -126,7 +126,12 @@ class SLProcessor:
         Returns:
             states (List[Dict]): ["columns_features", "constraints_feature"]
         """
+        # process each state
         states = []
+        column_features_max = [-np.inf] * 3
+        constraint_features_max = [-np.inf] * 6
+        column_features_min = [np.inf] * 3
+        constraint_features_min = [np.inf] * 6
         for mini_batch in mini_batches:
             # columns features
             columns_features = []
@@ -137,11 +142,21 @@ class SLProcessor:
             for column in columns:
                 path = column["path"]
                 dual_sum = sum(duals[path])
-                columns_features.append([dual_sum, column["distance"], column["demand"]]) # dim = 3
+                column_features = [dual_sum, column["distance"], column["demand"]]
+                # save max/min feature value
+                for fi in range(len(column_features)):
+                    column_features_max[fi] = max(column_features_max[fi], column_features[fi])
+                    column_features_min[fi] = min(column_features_min[fi], column_features[fi])
+                columns_features.append(column_features) # dim = 3
             # constraints features            
             constraints_features = []
             for node in range(graph.nodeNum):
-                constraints_features.append([duals[node], graph.location[node][0], graph.location[node][1], graph.demand[node], graph.readyTime[node], graph.dueTime[node]]) # dim = 6
+                constraint_features = [duals[node], graph.location[node][0], graph.location[node][1], graph.demand[node], graph.readyTime[node], graph.dueTime[node]]
+                # save max/min feature value
+                for fi in range(len(constraint_features)):
+                    constraint_features_max[fi] = max(constraint_features_max[fi], constraint_features[fi])
+                    constraint_features_min[fi] = min(constraint_features_min[fi], constraint_features[fi])
+                constraints_features.append(constraint_features) # dim = 6
             # edges
             edges = [[], []]
             for ci, column in enumerate(columns):
@@ -152,6 +167,14 @@ class SLProcessor:
             # pack state
             state = {"columns_features": columns_features, "constraints_features": constraints_features, "edges" : edges, "labels" : labels}
             states.append(state)
+        # max-min standardlization
+        for state in states:
+            for column_features in state["columns_features"]:
+                for fi in range(len(column_features)):
+                    column_features[fi] = (column_features[fi] - column_features_min[fi]) / (column_features_max[fi] - column_features_min[fi])
+            for constraint_features in state["constraints_features"]:
+                for fi in range(len(constraint_features)):
+                    constraint_features[fi] = (constraint_features[fi] - constraint_features_min[fi]) / (constraint_features_max[fi] - constraint_features_min[fi])
         return states
    
     def single_process(self, file_name):
@@ -179,7 +202,7 @@ class SLProcessor:
             #     print("Something Wrong in instance {}, skipped".format(file_name))
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
-        with open(self.save_path + f"mini_batches_{len(self.file_list)}.json", 'w') as f:
+        with open(self.save_path + f"mini_batches_standard_{len(self.file_list)}.json", 'w') as f:
             json.dump(states, f)
 
 
