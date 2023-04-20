@@ -15,41 +15,45 @@ from CGAlgs import GraphTool
 
 
 class MILPSolver:
+    """ solve MILP to get labels
+
+    !only consider new columns selection
+
+    """
     def __init__(self, epsilon1=0.001, epsilon2=0.1):
         # weight of minimize columnNum
         self.epsilon1 = epsilon1 # coef for present columns
         self.epsilon2 = epsilon2 # coef for new columns
 
     def solve(self, present_columns, new_columns, nodeNum):
-        """ build model """
-        # get data
-        epsilons = ([self.epsilon1 for _ in range(len(present_columns))] 
-                    + [self.epsilon2 for _ in range(len(new_columns))])
-
         """ solve new model to get labels"""
         # building model
         MILP = gp.Model("MILP")
         # add columns into MILP
-        columns = present_columns + new_columns
+        columns = new_columns + present_columns
         ## add variables
         theta_list = list(range(len(columns)))
         theta = MILP.addVars(theta_list, vtype="C", name="theta")
-        y = MILP.addVars(theta_list, vtype="I", name="y")
+        y_list = list(range(len(new_columns))) # ! only consider new columns selection
+        y = MILP.addVars(y_list, vtype="I", name="y")
         ## set objective
-        MILP.setObjective(gp.quicksum((theta[i] * columns[i]["distance"] + y[i] * epsilons[i]) for i in range(len(columns))), gp.GRB.MINIMIZE)
+        MILP.setObjective(gp.quicksum((theta[i] * columns[i]["distance"]) for i in range(len(columns))) 
+                          + gp.quicksum((y[i] * self.epsilon2) for i in range(len(new_columns))), gp.GRB.MINIMIZE)
         ## set constraints
-        MILP.addConstrs(theta[i] <= y[i] for i in range(len(columns)))
+        MILP.addConstrs(theta[i] <= y[i] for i in range(len(new_columns)))
         MILP.addConstrs(gp.quicksum(theta[i] * columns[i]["onehot_path"][j] for i in range(len(columns))) >= 1 for j in range(1, nodeNum))
         ## set params
         MILP.setParam("OutputFlag", 0)
         MILP.optimize()
         labels = []
-        for i in range(len(columns)):
+        for i in range(len(new_columns)):
             labels.append(round(y[i].X))
         return labels
  
 
 class SLProcessor:
+    """ process data for supervice learning
+    """
     def __init__(self, file_list, save_path, seed=1):
         self.file_list = file_list
         self.save_path = save_path
@@ -70,7 +74,7 @@ class SLProcessor:
         columns_data = json.load(open(columns_path, 'r'))
         ## preprocess columns
         columnSet = columns_data["columnSet"]
-        IterDualValues = columns_data["IterDualValues"] 
+        IterDualValue = columns_data["IterDualValue"] 
         for name, column in columnSet.items():
             path = column["path"]
             onehot_path = np.zeros(self.nodeNum)
@@ -88,7 +92,7 @@ class SLProcessor:
                 mini_batch["new_columns"].append(columnSet[name]) 
                 present_columns.append(columnSet[name]) 
             if len(mini_batch["present_columns"]) > 0:
-                mini_batch["dual_value"] = IterDualValues[cg_cnt]
+                mini_batch["dual_values"] = IterDualValue[cg_cnt]
                 mini_batches.append(mini_batch)
         return mini_batches, graph
     
@@ -122,7 +126,7 @@ class SLProcessor:
             columns_features = []
             # columns = mini_batch["present_columns"] + mini_batch["new_columns"]
             columns = mini_batch["new_columns"]
-            labels = mini_batch["labels"][-len(columns):]
+            labels = mini_batch["labels"]
             duals = np.array(mini_batch["dual_values"])
             for column in columns:
                 path = column["path"]
@@ -145,6 +149,9 @@ class SLProcessor:
         return states
    
     def single_process(self, file_name):
+        """
+        process single instance
+        """
         # build MILPSolver
         self.milp_solver = MILPSolver()
         # read data and process data
@@ -160,17 +167,19 @@ class SLProcessor:
     def run(self):
         states = []
         for file_name in tqdm.tqdm(self.file_list):
-            try:
-                states += self.single_process(file_name)
-            except:
-                print("Something Wrong in instance {}, skipped".format(file_name))
+            # try:
+            states += self.single_process(file_name) # main process
+            # except:
+            #     print("Something Wrong in instance {}, skipped".format(file_name))
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
         with open(self.save_path + f"mini_batches_{len(self.file_list)}.json", 'w') as f:
             json.dump(states, f)
 
 
 if __name__ == "__main__":
-    # set file list
-    total_file_list = os.listdir("pretrain/dataset_solved/VRPTW_GH_instance/") 
+    # get file list
+    total_file_list = os.listdir("pretrain\dataset_solved\GH_instance_1-10hard") 
     file_list = [file_name[:-5] for file_name in total_file_list]
     # set save path
     save_path = "pretrain/dataset_processed/"
