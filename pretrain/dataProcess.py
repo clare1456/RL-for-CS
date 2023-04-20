@@ -96,10 +96,10 @@ class SLProcessor:
             column["onehot_path"] = onehot_path.tolist()
             column["demand"] = sum(graph.demand[path])
         ## split iter columns
-        IterOfColumns = columns_data["IterOfColumns"]
+        IterColumns = columns_data["IterColumns"]
         mini_batches = []
         present_columns = []
-        for cg_cnt, column_names in IterOfColumns.items():
+        for cg_cnt, column_names in IterColumns.items():
             mini_batch = {"present_columns": present_columns.copy(), "new_columns": []}
             for name in column_names:
                 mini_batch["new_columns"].append(columnSet[name]) 
@@ -165,8 +165,8 @@ class SLProcessor:
         # build MILPSolver
         self.milp_solver = MILPSolver()
         # read data and process data
-        graph_path = "pretrain/dataset_solved/VRPTW_GH_instance/" + file_name + ".json"
-        columns_path = "pretrain/dataset_solved/VRPTW_GH_solverd/" + file_name + ".json"
+        graph_path = "pretrain/dataset_solved/GH_instance_1-10hard/" + file_name + ".json"
+        columns_path = "pretrain/dataset_solved/VRPTW_GH_1-10hard_solved/" + file_name + ".json"
         mini_batches, graph = self._read_data(graph_path, columns_path)
         # add labels to mini_batches with MILP
         self._get_labels(mini_batches)
