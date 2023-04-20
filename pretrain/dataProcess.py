@@ -97,7 +97,7 @@ class SLProcessor:
             for name in column_names:
                 mini_batch["new_columns"].append(columnSet[name]) 
                 present_columns.append(columnSet[name]) 
-            if len(mini_batch["present_columns"]) > 0:
+            if len(mini_batch["present_columns"]) > 0 and len(mini_batch["new_columns"]) > 0:
                 mini_batch["dual_values"] = IterDualValue[cg_cnt]
                 mini_batches.append(mini_batch)
         return mini_batches, graph
@@ -124,7 +124,7 @@ class SLProcessor:
             graph (GraphTool.Graph): graph data
 
         Returns:
-            states (List[Dict]): ["columns_features", "constraints_feature"]
+            states (List[Dict]): ["columns_state", "constraints_feature"]
         """
         # process each state
         states = []
@@ -165,14 +165,14 @@ class SLProcessor:
                     edges[0].append(ni)
                     edges[1].append(ci)
             # pack state
-            state = {"columns_features": columns_features, "constraints_features": constraints_features, "edges" : edges, "labels" : labels}
+            state = {"columns_state": columns_features, "constraints_state": constraints_features, "edges" : edges, "labels" : labels}
             states.append(state)
         # max-min standardlization
         for state in states:
-            for column_features in state["columns_features"]:
+            for column_features in state["columns_state"]:
                 for fi in range(len(column_features)):
                     column_features[fi] = (column_features[fi] - column_features_min[fi]) / (column_features_max[fi] - column_features_min[fi])
-            for constraint_features in state["constraints_features"]:
+            for constraint_features in state["constraints_state"]:
                 for fi in range(len(constraint_features)):
                     constraint_features[fi] = (constraint_features[fi] - constraint_features_min[fi]) / (constraint_features_max[fi] - constraint_features_min[fi])
         return states

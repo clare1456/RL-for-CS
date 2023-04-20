@@ -24,12 +24,12 @@ from models.GAT import GAT
 
 class Args:
     def __init__(self):
-        self.save = 0
-        self.file_name = "mini_batches_1"
+        self.save = 1
+        self.file_name = "mini_batches_60"
         self.net = "GAT"
         self.epochNum = 20
-        self.batch_size = 128
-        self.learning_rate = 1e-4
+        self.batch_size = 24
+        self.learning_rate = 1e-3
         self.test_prop = 0.1
         self.test_freq = 2
         self.weight_0 = 1
@@ -106,13 +106,13 @@ class SLTrainer:
 
     def cal_weighted_loss(self, output, labels):
         weights = np.array([self.args.weight_0 if label == 0 else self.args.weight_1 for label in labels])
-        weighted_loss = torch.mean(torch.pow(torch.FloatTensor(weights) * (output - labels), 2))
+        weighted_loss = torch.mean(torch.FloatTensor(weights) * torch.pow((output - labels), 2))
         return weighted_loss
 
     def train(self):
         if self.args.save:
-            self.logger = SummaryWriter(self.result_path + "pretrain_event") 
-            self.logger.add_text("args", self.args.__dict__)
+            self.logger = SummaryWriter(self.args.result_path + "pretrain_event") 
+            self.logger.add_text("args", str(self.args.__dict__))
         data_epochs = self.get_epochs(self.args.epochNum) 
         iter_cnt = 0
         loss = 0.0
@@ -125,25 +125,23 @@ class SLTrainer:
                 # calculate weighted mse loss 
                 loss += self.cal_weighted_loss(output, labels)
                 # optimizer step
-                if iter_cnt % self.args.batch_size == 0:
+                if (iter_cnt + 1) % self.args.batch_size == 0:
                     loss.backward()
                     self.optim.step()
                     self.optim.zero_grad()
                     avg_loss = loss.detach().numpy() / self.args.batch_size
                     if self.args.save:
                         self.logger.add_scalar("loss/train_loss", avg_loss, iter_cnt)
-                    print("Iter {}: train_loss == {:.2f}".format(iter_cnt, avg_loss))
                     loss = 0.0
                     # test 
-                    if (iter_cnt // self.args.batch_size) % self.args.test_freq == 0:
-                        avg_test_loss, accuracy_1, accuracy_0, accuracy_weighted, predict_time = self.test()
-                        if self.args.save:
-                            self.logger.add_scalar("loss/test_loss", avg_test_loss, iter_cnt)
-                            self.logger.add_scalar("accuracy/accuracy_1", accuracy_1, iter_cnt)
-                            self.logger.add_scalar("accuracy/accuracy_0", accuracy_0, iter_cnt)
-                            self.logger.add_scalar("accuracy/accuracy_weighted", accuracy_weighted, iter_cnt)
-                            self.logger.add_scalar("output/predict_time", predict_time, iter_cnt)
-                        print("Iter {}:                       test_loss == {:.2f}".format(iter_cnt, avg_test_loss))
+                    avg_test_loss, accuracy_1, accuracy_0, accuracy_weighted, predict_time = self.test()
+                    if self.args.save:
+                        self.logger.add_scalar("loss/test_loss", avg_test_loss, iter_cnt)
+                        self.logger.add_scalar("accuracy/accuracy_1", accuracy_1, iter_cnt)
+                        self.logger.add_scalar("accuracy/accuracy_0", accuracy_0, iter_cnt)
+                        self.logger.add_scalar("accuracy/accuracy_weighted", accuracy_weighted, iter_cnt)
+                        self.logger.add_scalar("output/predict_time", predict_time, iter_cnt)
+                    print("Iter {}/{}: train_loss = {:.2f}, test_loss == {:.2f}".format(iter_cnt+1, self.args.epochNum*len(self.train_data), avg_loss, avg_test_loss))
                 # record process
                 iter_cnt += 1
         # final optimize
