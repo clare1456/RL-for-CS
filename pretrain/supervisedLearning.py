@@ -24,16 +24,15 @@ from models.GAT import GAT
 
 class Args:
     def __init__(self):
-        self.save = 1
-        self.file_name = "mini_batches_60"
+        self.save = 0
+        self.file_name = "mini_batches_standard_60"
         self.net = "GAT"
         self.epochNum = 20
-        self.batch_size = 24
-        self.learning_rate = 1e-3
-        self.test_prop = 0.1
-        self.test_freq = 2
+        self.batch_size = 64
+        self.learning_rate = 1e-4
+        self.test_prop = 0.05
         self.weight_0 = 1
-        self.weight_1 = 15
+        self.weight_1 = 50
         self.seed = 1
         self.curr_path = os.path.dirname(os.path.abspath(__file__)) # 当前文件所在绝对路径
         self.curr_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")  # 获取当前时间 
@@ -56,9 +55,9 @@ class SLTrainer:
         self.train_data, self.test_data = self.preprocess_data(self.mini_batches, args.test_prop)
         # build model
         if args.net == "MHA":
-            net = MHA(input_dim=3, embed_dim=128, hidden_dim=128, device=self.device)
+            net = MHA(input_dim=3, embed_dim=128, hidden_dim=128, device=args.device)
         elif args.net == "GAT":
-            net = GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=128)
+            net = GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
         self.actor = SLActor(net)
         self.optim = torch.optim.Adam(self.actor.parameters(), lr=args.learning_rate)
     
@@ -74,11 +73,7 @@ class SLTrainer:
             test_data (List[Dict]): test datas
         """
         # preprocess data
-        for state in data:
-            state["columns_state"] = state["columns_features"]
-            state.pop("columns_features")
-            state["constraints_state"] = state["constraints_features"]
-            state.pop("constraints_features")
+        pass 
         # randomly shuffle dataset
         np.random.seed(self.args.seed)
         np.random.shuffle(data)

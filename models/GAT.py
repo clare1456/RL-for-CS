@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from torch_geometric.nn import GATConv
 
 class GAT(nn.Module):
-    def __init__(self, node_feature_dim, column_feature_dim, embed_dim, device, hidden_dim=128, heads=8, dropout=0.2, feature_gain=2):
+    def __init__(self, node_feature_dim, column_feature_dim, embed_dim, device, hidden_dim=256, heads=8, dropout=0.0, feature_gain=2):
         super().__init__()
         self.name = "GAT"
         # build network 

@@ -168,13 +168,13 @@ class SLProcessor:
             state = {"columns_state": columns_features, "constraints_state": constraints_features, "edges" : edges, "labels" : labels}
             states.append(state)
         # max-min standardlization
-        for state in states:
-            for column_features in state["columns_state"]:
-                for fi in range(len(column_features)):
-                    column_features[fi] = (column_features[fi] - column_features_min[fi]) / (column_features_max[fi] - column_features_min[fi])
-            for constraint_features in state["constraints_state"]:
-                for fi in range(len(constraint_features)):
-                    constraint_features[fi] = (constraint_features[fi] - constraint_features_min[fi]) / (constraint_features_max[fi] - constraint_features_min[fi])
+        # for state in states:
+        #     for column_features in state["columns_state"]:
+        #         for fi in range(len(column_features)):
+        #             column_features[fi] = (column_features[fi] - column_features_min[fi]) / (column_features_max[fi] - column_features_min[fi])
+        #     for constraint_features in state["constraints_state"]:
+        #         for fi in range(len(constraint_features)):
+        #             constraint_features[fi] = (constraint_features[fi] - constraint_features_min[fi]) / (constraint_features_max[fi] - constraint_features_min[fi])
         return states
    
     def single_process(self, file_name):
@@ -202,7 +202,7 @@ class SLProcessor:
             #     print("Something Wrong in instance {}, skipped".format(file_name))
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
-        with open(self.save_path + f"mini_batches_standard_{len(self.file_list)}.json", 'w') as f:
+        with open(self.save_path + f"mini_batches_{len(self.file_list)}.json", 'w') as f:
             json.dump(states, f)
 
 
