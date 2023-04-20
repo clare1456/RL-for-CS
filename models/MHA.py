@@ -27,12 +27,10 @@ class MHA(nn.Module):
             n_layers=4, 
             node_dim=input_dim, 
             feed_forward_hidden=hidden_dim, 
-        )
+        ).to(self.device)
     
     def forward(self, state, info={}):
         obs = torch.FloatTensor(state["columns_state"]).to(self.device)
-        if isinstance(obs, torch.Tensor) == False:
-            obs = torch.FloatTensor(obs) 
         embeddings =  self.encoder(obs)
         return embeddings
 
