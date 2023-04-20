@@ -16,9 +16,10 @@ from CGAlgs import GraphTool
 
 class MILPSolver:
     """ solve MILP to get labels
+    Methods:
+        solve(self, present_columns, new_columns, nodeNum) -> solve MILP to get labels
 
-    !only consider new columns selection
-
+    ps: only consider new columns selection
     """
     def __init__(self, epsilon1=0.001, epsilon2=0.1):
         # weight of minimize columnNum
@@ -53,6 +54,11 @@ class MILPSolver:
 
 class SLProcessor:
     """ process data for supervice learning
+    Methods:
+        single_process(self, file_name) -> process single file
+        run(self) -> process all files in file_list
+
+    ps: only consider new columns selection
     """
     def __init__(self, file_list, save_path, seed=1):
         self.file_list = file_list
