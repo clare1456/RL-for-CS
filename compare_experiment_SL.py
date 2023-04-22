@@ -40,5 +40,5 @@ while True:
     iter_cnt += 1
 time_cost = time.time() - start_time
 print("final_obj = {}, iter_cnt = {}, total_reward = {}, time_cost = {}".format(env.CGAlg.RLMP_obj, iter_cnt, sum(reward_list), time_cost))
-plt.plot(range(len(reward_list)), reward_list)
+plt.plot(range(len(model_ub_lb)), np.array(model_ub_lb))
 plt.show()
