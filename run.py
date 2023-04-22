@@ -24,19 +24,19 @@ class Args:
         ################################## 环境超参数 ###################################
         self.instance = "R101" # 算例 / 生成模式 random or sequence
         self.map_change_eps = 2 # 地图更新周期, only for random / sequence
-        self.limit_node_num = 30 # 限制算例点的个数
+        self.limit_node_num = 50 # 限制算例点的个数
         self.max_step = 20 # CG最大迭代次数
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 检测GPU
-        self.seed = 10 # 随机种子，置0则不设置随机种子
+        self.seed = 2 # 随机种子，置0则不设置随机种子
         self.process_num = 6  # 每次训练的进程数
         self.train_eps = 200 # 训练的回合数
         self.test_eps = 10 # 测试的回合数
         ################################################################################
         
         ################################## 算法超参数 ####################################
-        self.debug = 0 # 主线程运行而非单线程
-        self.net = "MHA" # GAT / MHA 选择 embedding 网络
-        self.policy = "SAC" # SAC / PPO 选择算法
+        self.debug = 1 # 主线程运行而非单线程
+        self.net = "GAT" # GAT / MHA 选择 embedding 网络
+        self.policy = "PPO" # SAC / PPO 选择算法
         self.hidden_dim = 128 # 隐藏层大小
         self.gamma = 0.98  # 强化学习中的折扣因子
         self.actor_lr = 1e-5 # actor的学习率
@@ -60,7 +60,9 @@ class Args:
         self.output_eps = 1 # 输出信息频率
         self.curr_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")  # 获取当前时间 
         self.curr_path = os.path.dirname(os.path.abspath(__file__)) # 当前文件所在绝对路径
-        self.load_path = "" # 读取模型的路径
+        self.load_policy_path = "" # 读取策略网络模型的路径
+        self.load_net_path = ""#"pretrain\\model_saved\\net.pth" # 读取网络模型的路径
+        self.load_actor_path = ""#"pretrain\\model_saved\\actor.pth" # 读取actor网络模型到actor, critic
         self.result_path = self.curr_path+"/outputs/" + self.instance + \
             '/'+self.curr_time+'/results/'  # 保存结果的路径
         self.model_path = self.curr_path+"/outputs/" + self.instance + \
@@ -70,14 +72,20 @@ class Args:
 if __name__ == "__main__":
     # 1. get args
     args = Args()
+    if args.seed != 0:
+        torch.manual_seed(args.seed)
+        np.random.seed(args.seed)
     # 2. build global Policy
     if args.policy == "SAC":
         policy = Policy.SACPolicy(args)
     elif args.policy == "PPO":
         policy = Policy.PPOPolicy(args)
-    if args.load_path:
-        policy.load(args.load_path)
-    policy.share_memory()
+    if args.load_policy_path:
+        policy.load_policy(args.load_policy_path)
+    elif args.load_net_path:
+        policy.load_net(args.load_net_path)
+    elif args.load_actor_path:
+        policy.load_actor(args.load_actor_path)
     # 3. train policy
     if args.train_eps > 0:
         # train model
@@ -85,13 +93,14 @@ if __name__ == "__main__":
         if args.debug == True:
             # debug 模式 (print)
             if args.policy == "SAC":
-                Trainer.trainOffPolicy(policy, args, res_queue, outputFlag=True, seed=1) # for debug
+                Trainer.trainOffPolicy(policy, args, res_queue, outputFlag=True, seed=args.seed) # for debug
             elif args.policy == "PPO":
-                Trainer.trainOnPolicy(policy, args, res_queue, outputFlag=True, seed=1) # for debug
+                Trainer.trainOnPolicy(policy, args, res_queue, outputFlag=True, seed=args.seed) # for debug
         else:
             # 多线程加速模式 (logger)
             writer = SummaryWriter(args.result_path + args.policy + "_" + args.net)
             writer.add_text("args", str(args.__dict__))
+            policy.share_memory()
             processes = []
             process_num = args.process_num
             for pi in range(process_num):
@@ -122,15 +131,13 @@ if __name__ == "__main__":
                         writer.add_scalar(res["tag"], res["value"], len(loss_list))
             for p in processes:
                 p.join()
+            writer.close()
         # 4. save the model
         policy.save(args.model_path)
 
     # 4. test
     Trainer.test(policy, args, outputFlag=True)
 
-    # 2. check device, set logger
-    # file_name = "RL4CS_" + str(time.time())[-4:]
-    # writer.close()
     
     
 

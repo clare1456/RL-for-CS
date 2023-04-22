@@ -14,6 +14,7 @@ import torch.nn.functional as F
 
 from models.MHA import *
 from models.model_efgat_v1 import *
+from models.GAT import *
 
 class Actor(nn.Module):
     def __init__(
@@ -98,6 +99,6 @@ class MLP(nn.Module):
     def forward(self, x):
         # 检查类型
         if isinstance(x, torch.Tensor) == False:
-            x = torch.Tensor(x)
+            x = torch.Tensor(x).to(self.device)
         # 输出结果
         return self.process(x)
