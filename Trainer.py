@@ -159,10 +159,12 @@ def test(policy, args, outputFlag=False):
     ep_rewards = [] # 记录所有回合奖励
     if outputFlag:
         print("\nTesting Begin!")
+    instance_generator = instanceGenerator(args)
     for epi in range(args.test_eps):
         ep_reward = 0
         # reset environment
-        state, info = env.reset()
+        instance = instance_generator.get()
+        state, info = env.reset(instance)
         # interact until done
         while True:
             act = policy(state)

@@ -22,25 +22,25 @@ import torch.multiprocessing as mp
 class Args:
     def __init__(self) -> None:
         ################################## 环境超参数 ###################################
+        self.debug = 0 # 主线程运行而非单线程
         self.instance = "R101" # 算例 / 生成模式 random or sequence
         self.map_change_eps = 2 # 地图更新周期, only for random / sequence
         self.limit_node_num = 50 # 限制算例点的个数
         self.max_step = 20 # CG最大迭代次数
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 检测GPU
-        self.seed = 2 # 随机种子，置0则不设置随机种子
-        self.process_num = 6  # 每次训练的进程数
-        self.train_eps = 200 # 训练的回合数
+        self.seed = 1 # 随机种子，置0则不设置随机种子
+        self.process_num = mp.cpu_count() if not self.debug else 1 # 每次训练的进程数
+        self.train_eps = 200 // self.process_num # 训练的回合数
         self.test_eps = 10 # 测试的回合数
         ################################################################################
         
         ################################## 算法超参数 ####################################
-        self.debug = 1 # 主线程运行而非单线程
         self.net = "GAT" # GAT / MHA 选择 embedding 网络
-        self.policy = "PPO" # SAC / PPO 选择算法
+        self.policy = "SAC" # SAC / PPO 选择算法
         self.hidden_dim = 128 # 隐藏层大小
         self.gamma = 0.98  # 强化学习中的折扣因子
-        self.actor_lr = 1e-5 # actor的学习率
-        self.critic_lr = 1e-5 # critic的学习率
+        self.actor_lr = 1e-4 # actor的学习率
+        self.critic_lr = 1e-4 # critic的学习率
         # SAC 超参数
         self.batch_size = 5*self.max_step  # 每次训练的batch大小(SAC)
         self.buffer_size = 200*self.max_step # replay buffer的大小(SAC)
@@ -133,7 +133,8 @@ if __name__ == "__main__":
                 p.join()
             writer.close()
         # 4. save the model
-        policy.save(args.model_path)
+        if not args.debug:
+            policy.save(args.model_path)
 
     # 4. test
     Trainer.test(policy, args, outputFlag=True)
