@@ -149,24 +149,30 @@ class CGWithSelection(ColumnGeneration.ColumnGenerationWithLabeling):
 
 if __name__ == "__main__":
     from run import Args
+    import Net
+    import torch
 
     args = Args()
     env = CGEnv(args)
 
+    net = Net.GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
+    actor = Net.Actor(net)
+    # actor.load_state_dict(torch.load("pretrain\\model_saved\\actor.pth", map_location=torch.device('cpu')))
     start_time = time.time()
     state, info = env.reset(args.instance)
-    env.CGAlg.OutputFlag = True
     iter_cnt = 0
     reward_list = []
     while True:
         # test: randomly delete a column
         col_num = len(state["columns_state"])
         action = np.ones(col_num)
-        # choose_delete = np.random.randint(col_num)
-        # action[choose_delete] = 0
+        probs = actor(state, info)
+        # for i in range(len(action)):
+        #     if np.random.rand() < probs[i][1]:
+        #         action[i] = 0
         state, reward, done, info = env.step(action)
         reward_list.append(reward)
-        # print("Iter {}: delete column {}, reward = {}".format(iter_cnt, choose_delete, reward))
+        print("Iter {}: delete column {}, reward = {}".format(iter_cnt, len(action)-sum(action), reward))
         if done:
             break
         iter_cnt += 1
