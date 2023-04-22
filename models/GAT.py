@@ -25,6 +25,9 @@ class GAT(nn.Module):
         self.output = nn.Sequential(
             nn.Linear(hidden_dim, embed_dim).to(device), 
         )
+        # randomly init parameters
+        # for param in self.parameters():
+        #     torch.nn.init.normal_(param)
 
     def forward(self, state):
         node_features = state["constraints_state"]

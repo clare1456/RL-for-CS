@@ -10,8 +10,10 @@ class Graph():
     def __init__(self, file_name, limit_node_num = None):
         if file_name.endswith('.json'):
             self.read_data_from_json(file_name, limit_node_num)
+            self.cut_end = True
         else:
             self.read_data(file_name, limit_node_num) # read data from file
+            self.cut_end = False
         self.preprocess_data() # preprocess data
     
     def read_data(self, file_name, limit_node_num):
@@ -42,6 +44,10 @@ class Graph():
             serviceTime.append(cust[6])
 
         # save data
+        if limit_node_num is None:
+            limit_node_num = len(location) - self.cut_end
+        else:
+            limit_node_num = min(limit_node_num, len(location) - self.cut_end)
         self.vehicleNum = vehicleNum
         self.capacity = capacity
         self.location = np.array(location[:limit_node_num])

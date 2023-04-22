@@ -32,7 +32,7 @@ class CGEnv(gym.Env):
         # reset Column Generation Algorithm
         if instance is not None and instance != self.instance:
             self.instance = instance
-            file_path = "problems\{}.txt".format(self.instance)
+            file_path = "problems\{}.json".format(self.instance)
             self.graph = GraphTool.Graph(file_path, self.limit_node_num)
         self.CGAlg = CGWithSelection(self.graph)
         # run column generation until column selection part
@@ -148,16 +148,14 @@ class CGWithSelection(ColumnGeneration.ColumnGenerationWithLabeling):
 
 
 if __name__ == "__main__":
-    class Args:
-        instance = "R101"
-        limit_node_num = 50
-        max_step = 20
+    from run import Args
 
     args = Args()
     env = CGEnv(args)
 
     start_time = time.time()
     state, info = env.reset(args.instance)
+    env.CGAlg.OutputFlag = True
     iter_cnt = 0
     reward_list = []
     while True:
@@ -173,7 +171,7 @@ if __name__ == "__main__":
             break
         iter_cnt += 1
     time_cost = time.time() - start_time
-    print("total_reward = {}, time_cost = {}".format(sum(reward_list), time_cost))
+    print("final_obj = {}, iter_cnt = {}, total_reward = {}, time_cost = {}".format(env.CGAlg.RLMP_obj, iter_cnt, sum(reward_list), time_cost))
     plt.plot(range(len(reward_list)), reward_list)
     plt.show()
 
