@@ -29,7 +29,7 @@ class Args:
         self.net = "GAT"
         self.epochNum = 200
         self.batch_size = 128
-        self.learning_rate = 1e-3
+        self.learning_rate = 1e-4
         self.test_prop = 0.05
         self.weight_0 = 1
         self.weight_1 = 50
