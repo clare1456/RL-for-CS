@@ -24,12 +24,12 @@ from models.GAT import GAT
 
 class Args:
     def __init__(self):
-        self.save = 0
+        self.save = 1
         self.file_name = "mini_batches_standard_60"
         self.net = "GAT"
-        self.epochNum = 20
-        self.batch_size = 64
-        self.learning_rate = 1e-4
+        self.epochNum = 200
+        self.batch_size = 128
+        self.learning_rate = 1e-3
         self.test_prop = 0.05
         self.weight_0 = 1
         self.weight_1 = 50
@@ -43,7 +43,14 @@ class Args:
 
 class SLActor(Actor):
     def save_net(self, path):
-        torch.save(self.net.state_dict(), path+"net.pth")
+        if not os.path.exists(path):
+            os.makedirs(path)
+        torch.save(self.preprocess.state_dict(), path+"net.pth")
+    
+    def save(self, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+        torch.save(self.state_dict(), path+"actor.pth")
 
    
 class SLTrainer:
@@ -100,8 +107,10 @@ class SLTrainer:
         return epochs
 
     def cal_weighted_loss(self, output, labels):
+        # calculate weighted cross entropy loss
         weights = torch.FloatTensor([self.args.weight_0 if label == 0 else self.args.weight_1 for label in labels]).to(self.args.device)
-        weighted_loss = torch.mean((weights)* torch.pow((output - labels), 2))
+        weighted_loss = torch.sum(weights * -torch.log(abs(output - (1-labels))))
+        weighted_loss /= sum(weights)
         return weighted_loss
 
     def train(self):
@@ -136,15 +145,16 @@ class SLTrainer:
                         self.logger.add_scalar("accuracy/accuracy_0", accuracy_0, iter_cnt)
                         self.logger.add_scalar("accuracy/accuracy_weighted", accuracy_weighted, iter_cnt)
                         self.logger.add_scalar("output/predict_time", predict_time, iter_cnt)
-                    print("Iter {}/{}: train_loss = {:.2f}, test_loss == {:.2f}".format(iter_cnt+1, self.args.epochNum*len(self.train_data), avg_loss, avg_test_loss))
+                    print("Iter {}/{}: train_loss = {:.2f}, test_loss = {:.2f}".format(iter_cnt+1, self.args.epochNum*len(self.train_data), avg_loss, avg_test_loss))
                 # record process
                 iter_cnt += 1
-        # final optimize
-        if iter_cnt % self.args.batch_size > 0:
-            loss.backward()
-            self.optim.step()
+            # save model each epoch
             if self.args.save:
-                self.logger.add_scalar("loss/train_loss", loss.detach().numpy() / (iter_cnt % self.batch_size), iter_cnt)
+                self.actor.save(self.args.result_path)
+                self.actor.save_net(self.args.result_path)
+        # save model
+        if self.args.save:
+            self.logger.close()
 
     @torch.no_grad() 
     def test(self):

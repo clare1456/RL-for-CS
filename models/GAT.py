@@ -45,8 +45,8 @@ class GAT(nn.Module):
         column_embeddings = F.relu(self.column_linear(column_features))
         # embedding concat
         embeddings = torch.cat([node_embeddings, column_embeddings], dim=0)
-        embeddings = F.relu(self.conv1(embeddings, edges)) # node to column
-        embeddings = F.relu(self.conv2(embeddings, torch.flip(edges, [1]))) # column to node
+        embeddings = F.relu(self.conv1(embeddings, edges)) # column to node
+        embeddings = F.relu(self.conv2(embeddings, torch.flip(edges, [0]))) # node to column
         logits = self.output(embeddings[-len(column_features):]) # get columns logits
         return logits
 

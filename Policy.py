@@ -40,10 +40,10 @@ class basePolicy(nn.Module):
         # create dir if not exist
         if not os.path.exists(path):
             os.makedirs(path)
-        torch.save(self.state_dict(), path + '{}.pth'.format(self.alg_name))
+        torch.save(self.state_dict(), path + 'policy.pth')
         
     def load(self, path):
-        self.load_state_dict(torch.load(path) + '{}.pth'.format(self.alg_name))
+        self.load_state_dict(torch.load(path) + 'policy.pth')
 
 class SACPolicy(basePolicy):
     def __init__(self, args):

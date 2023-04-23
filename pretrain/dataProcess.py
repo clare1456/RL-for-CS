@@ -162,8 +162,8 @@ class SLProcessor:
             for ci, column in enumerate(columns):
                 path = column["path"]
                 for ni in path: 
-                    edges[0].append(ni)
-                    edges[1].append(ci)
+                    edges[0].append(ci+graph.nodeNum)
+                    edges[1].append(ni)
             # pack state
             state = {"columns_state": columns_features, "constraints_state": constraints_features, "edges" : edges, "labels" : labels}
             states.append(state)
