@@ -25,11 +25,11 @@ from models.GAT import GAT
 class Args:
     def __init__(self):
         self.save = 0
-        self.file_name = "mini_batches_60"
+        self.file_name = "mini_batches_standard_60"
         self.net = "GAT"
         self.epochNum = 50
         self.batch_size = 64
-        self.learning_rate = 1e-5
+        self.learning_rate = 1e-3
         self.test_prop = 0.05
         self.weight_0 = 1
         self.weight_1 = 50
@@ -102,8 +102,10 @@ class SLTrainer:
         return epochs
 
     def cal_weighted_loss(self, output, labels):
+        # calculate weighted cross entropy loss
         weights = torch.FloatTensor([self.args.weight_0 if label == 0 else self.args.weight_1 for label in labels]).to(self.args.device)
-        weighted_loss = torch.mean(weights * torch.pow((output - labels), 2))
+        weighted_loss = torch.sum(weights * -torch.log(abs(output - (1-labels))))
+        weighted_loss /= sum(weights)
         return weighted_loss
 
     def train(self):
