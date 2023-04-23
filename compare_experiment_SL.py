@@ -25,10 +25,10 @@ while True:
     # test: randomly delete a column
     col_num = len(state["columns_state"])
     action = np.ones(col_num)
-    # probs = actor(state, info)
-    # for i in range(len(action)):
-    #     if np.random.rand() < probs[i][1]:
-    #         action[i] = 0
+    probs = actor(state, info)
+    for i in range(len(action)):
+        if np.random.rand() < probs[i][1]:
+            action[i] = 0
     state, reward, done, info = env.step(action)
     ub = env.CGAlg.RLMP_obj
     lb = max(env.CGAlg.RLMP_obj - min(vehicleNum * env.CGAlg.SP_obj, 0), 0)
