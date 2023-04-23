@@ -14,6 +14,7 @@ import torch.nn.functional as F
 
 from models.MHA import *
 from models.model_efgat_v1 import *
+from models.GAT import *
 
 class Actor(nn.Module):
     def __init__(

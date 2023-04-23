@@ -19,11 +19,12 @@ import os
 class basePolicy(nn.Module):
     def __init__(self, args):
         super().__init__()
+        self.args = args
         self.net_name = args.net
-        if self.net_name == "MHA":
-            self.net = Net.MHA(input_dim=3+args.limit_node_num, embed_dim=128, hidden_dim=args.hidden_dim)
-        elif self.net_name == "GAT":
-            self.net = Net.GAT_EFA_Net(nfeat=128, nedgef=128, embed_dim=128, nhid = 64, maxNodeNum=args.limit_node_num)
+        if args.net == "MHA":
+            self.net = Net.MHA(input_dim=3, embed_dim=128, hidden_dim=128, device=args.device)
+        elif args.net == "GAT":
+            self.net = Net.GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
     
     def forward(self, state):
         column_num = len(state["columns_state"])
@@ -42,8 +43,11 @@ class basePolicy(nn.Module):
             os.makedirs(path)
         torch.save(self.state_dict(), path + 'policy.pth')
         
-    def load(self, path):
-        self.load_state_dict(torch.load(path) + 'policy.pth')
+    def load_policy(self, path):
+        self.load_state_dict(torch.load(path, map_location=self.args.device))
+
+    def load_net(self, path):
+        self.net.load_state_dict(torch.load(path, map_location=self.args.device))
 
 class SACPolicy(basePolicy):
     def __init__(self, args):
@@ -145,6 +149,13 @@ class SACPolicy(basePolicy):
             "output/avg_actor_prob": avg_prob,
         }
         return loss_info
+
+    def load_actor(self, path):
+        self.actor.load_state_dict(torch.load(path, map_location=self.args.device))
+        self.critic_1.load_state_dict(torch.load(path, map_location=self.args.device))
+        self.critic_2.load_state_dict(torch.load(path, map_location=self.args.device))
+        self.target_critic_1.load_state_dict(torch.load(path, map_location=self.args.device))
+        self.target_critic_2.load_state_dict(torch.load(path, map_location=self.args.device))
 
 class PPOPolicy(basePolicy):
     def __init__(self, args):
@@ -248,6 +259,8 @@ class PPOPolicy(basePolicy):
         }
         return loss_info
             
-        
+    def load_actor(self, path):
+        self.actor.load_state_dict(torch.load(path, map_location=self.args.device))
+        self.critic.load_state_dict(torch.load(path, map_location=self.args.device))
 
 
