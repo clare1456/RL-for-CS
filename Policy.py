@@ -263,4 +263,6 @@ class PPOPolicy(basePolicy):
         self.actor.load_state_dict(torch.load(path, map_location=self.args.device))
         self.critic.load_state_dict(torch.load(path, map_location=self.args.device))
 
-
+# todo: design choose one net and policy
+class SACPolicy_choose_one(basePolicy):
+    pass
