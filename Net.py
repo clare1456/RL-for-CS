@@ -149,9 +149,9 @@ class MLP(nn.Module):
         # 根据 hidden sizes 搭建神经网络
         self.device = device
         self.process = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim), 
+            nn.Linear(input_dim, hidden_dim).to(device), 
             nn.ReLU(), 
-            nn.Linear(hidden_dim, output_dim), 
+            nn.Linear(hidden_dim, output_dim).to(device), 
         )
         self.process.to(device=device)
     

@@ -24,12 +24,12 @@ from models.GAT import GAT
 
 class Args:
     def __init__(self):
-        self.save = 0
+        self.save = 1
         self.file_name = "mini_batches_standard_60"
         self.net = "GAT"
-        self.epochNum = 50
-        self.batch_size = 64
-        self.learning_rate = 1e-3
+        self.epochNum = 200
+        self.batch_size = 128
+        self.learning_rate = 1e-4
         self.test_prop = 0.05
         self.weight_0 = 1
         self.weight_1 = 50
@@ -46,6 +46,11 @@ class SLActor(Actor):
         if not os.path.exists(path):
             os.makedirs(path)
         torch.save(self.preprocess.state_dict(), path+"net.pth")
+    
+    def save(self, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+        torch.save(self.state_dict(), path+"actor.pth")
 
    
 class SLTrainer:
@@ -140,12 +145,15 @@ class SLTrainer:
                         self.logger.add_scalar("accuracy/accuracy_0", accuracy_0, iter_cnt)
                         self.logger.add_scalar("accuracy/accuracy_weighted", accuracy_weighted, iter_cnt)
                         self.logger.add_scalar("output/predict_time", predict_time, iter_cnt)
-                    print("Iter {}/{}: train_loss = {:.2f}, test_loss == {:.2f}".format(iter_cnt+1, self.args.epochNum*len(self.train_data), avg_loss, avg_test_loss))
+                    print("Iter {}/{}: train_loss = {:.2f}, test_loss = {:.2f}".format(iter_cnt+1, self.args.epochNum*len(self.train_data), avg_loss, avg_test_loss))
                 # record process
                 iter_cnt += 1
+            # save model each epoch
+            if self.args.save:
+                self.actor.save(self.args.result_path)
+                self.actor.save_net(self.args.result_path)
         # save model
         if self.args.save:
-            self.actor.save_net(self.args.result_path)
             self.logger.close()
 
     @torch.no_grad() 
