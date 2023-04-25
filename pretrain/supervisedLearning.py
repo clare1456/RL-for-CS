@@ -24,8 +24,8 @@ from models.GAT import GAT
 
 class Args:
     def __init__(self):
-        self.save = 1
-        self.file_name = "mini_batches_60"
+        self.save = 0
+        self.file_name = "mini_batches_standard_2"
         self.net = "GAT"
         self.epochNum = 200
         self.batch_size = 128
@@ -58,8 +58,10 @@ class SLTrainer:
         # save args
         self.args = args
         # build data 
-        self.mini_batches = json.load(open(args.curr_path + "\dataset_processed\{}.json".format(args.file_name)))
-        self.train_data, self.test_data = self.preprocess_data(self.mini_batches, args.test_prop)
+        file = json.load(open(args.curr_path + "\dataset_processed\{}.json".format(args.file_name)))
+        states = file["states"]
+        max_min_info = file["max_min_info"]
+        self.train_data, self.test_data = self.preprocess_data(states, args.test_prop)
         # build model
         if args.net == "MHA":
             net = MHA(input_dim=3, embed_dim=128, hidden_dim=128, device=args.device)

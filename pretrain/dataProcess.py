@@ -128,10 +128,6 @@ class SLProcessor:
         """
         # process each state
         states = []
-        column_features_max = [-np.inf] * 3
-        constraint_features_max = [-np.inf] * 6
-        column_features_min = [np.inf] * 3
-        constraint_features_min = [np.inf] * 6
         for mini_batch in mini_batches:
             # columns features
             columns_features = []
@@ -143,19 +139,11 @@ class SLProcessor:
                 path = column["path"]
                 dual_sum = sum(duals[path])
                 column_features = [dual_sum, column["distance"], column["demand"]]
-                # save max/min feature value
-                for fi in range(len(column_features)):
-                    column_features_max[fi] = max(column_features_max[fi], column_features[fi])
-                    column_features_min[fi] = min(column_features_min[fi], column_features[fi])
                 columns_features.append(column_features) # dim = 3
             # constraints features            
             constraints_features = []
             for node in range(graph.nodeNum):
                 constraint_features = [duals[node], graph.location[node][0], graph.location[node][1], graph.demand[node], graph.readyTime[node], graph.dueTime[node]]
-                # save max/min feature value
-                for fi in range(len(constraint_features)):
-                    constraint_features_max[fi] = max(constraint_features_max[fi], constraint_features[fi])
-                    constraint_features_min[fi] = min(constraint_features_min[fi], constraint_features[fi])
                 constraints_features.append(constraint_features) # dim = 6
             # edges
             edges = [[], []]
@@ -167,6 +155,30 @@ class SLProcessor:
             # pack state
             state = {"columns_state": columns_features, "constraints_state": constraints_features, "edges" : edges, "labels" : labels}
             states.append(state)
+        
+        return states
+
+    def standardlization(self, states):
+        column_features_max = [-np.inf] * 3
+        constraint_features_max = [-np.inf] * 6
+        column_features_min = [np.inf] * 3
+        constraint_features_min = [np.inf] * 6
+        max_min_info = {"column_state_max": column_features_max, "column_state_min": column_features_min,
+                        "constraint_state_max": constraint_features_max, "constraint_state_min": constraint_features_min}
+        # save max/min feature value
+        for state in states:
+            columns_features = state["columns_state"]
+            constraints_features = state["constraints_state"]
+            for ci in range(len(columns_features)):
+                column_features = columns_features[ci]
+                for fi in range(len(column_features)):
+                    column_features_max[fi] = max(column_features_max[fi], column_features[fi])
+                    column_features_min[fi] = min(column_features_min[fi], column_features[fi])
+            for ci in range(len(constraints_features)):
+                constraint_features = constraints_features[ci]
+                for fi in range(len(constraint_features)):
+                    constraint_features_max[fi] = max(constraint_features_max[fi], constraint_features[fi])
+                    constraint_features_min[fi] = min(constraint_features_min[fi], constraint_features[fi])
         # max-min standardlization
         for state in states:
             for column_features in state["columns_state"]:
@@ -175,7 +187,7 @@ class SLProcessor:
             for constraint_features in state["constraints_state"]:
                 for fi in range(len(constraint_features)):
                     constraint_features[fi] = (constraint_features[fi] - constraint_features_min[fi]) / (constraint_features_max[fi] - constraint_features_min[fi])
-        return states
+        return max_min_info
    
     def single_process(self, file_name):
         """
@@ -194,24 +206,43 @@ class SLProcessor:
         return mini_batches
     
     def run(self):
+        # process data
         states = []
         for file_name in tqdm.tqdm(self.file_list):
-            # try:
-            states += self.single_process(file_name) # main process
-            # except:
-            #     print("Something Wrong in instance {}, skipped".format(file_name))
+            try:
+                states += self.single_process(file_name) # main process
+            except:
+                print("Something Wrong in instance {}, skipped".format(file_name))
+        # pack file
+        max_min_info = self.standardlization(states)
+        file = {
+            "states" : states, 
+            "max_min_info" : max_min_info
+        }
+        # save file
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
         with open(self.save_path + f"mini_batches_standard_{len(self.file_list)}.json", 'w') as f:
-            json.dump(states, f)
+            json.dump(file, f)
 
 
 if __name__ == "__main__":
     # get file list
     total_file_list = os.listdir("pretrain\dataset_solved\GH_instance_1-10hard") 
-    file_list = [file_name[:-5] for file_name in total_file_list]
+    file_list = [file_name[:-5] for file_name in total_file_list][:1]
     # set save path
     save_path = "pretrain/dataset_processed/"
     # run
     sl_processor = SLProcessor(file_list, save_path)
     sl_processor.run()
+
+    
+    # tmp: transfer non standard to standard
+    # states = json.load(open("pretrain\dataset_processed\mini_batches_60.json", "r"))
+    # max_min_info = sl_processor.standardlization(states)
+    # file = {
+    #     "states" : states,
+    #     "max_min_info" : max_min_info
+    # }
+    # with open("pretrain\dataset_processed\mini_batches_standard_60.json", 'w') as f:
+    #     json.dump(file, f)
