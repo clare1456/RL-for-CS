@@ -25,7 +25,7 @@ from models.GAT import GAT
 class Args:
     def __init__(self):
         self.save = 1
-        self.file_name = "mini_batches_standard_60"
+        self.file_name = "mini_batches_60"
         self.net = "GAT"
         self.epochNum = 200
         self.batch_size = 128
