@@ -35,13 +35,15 @@ class basePolicy(nn.Module):
         for i in range(column_num):
             # 依概率选择1或0
             act[i] = np.random.random() < prob[i][1]
+        if sum(act) == 0:
+            act[0] = 1
         return act
 
     def save(self, path):
         # create dir if not exist
         if not os.path.exists(path):
             os.makedirs(path)
-        torch.save(self.state_dict(), path + 'policy.pth')
+        torch.save(self.state_dict(), path + '{}.pth'.format(self.alg_name))
         
     def load_policy(self, path):
         self.load_state_dict(torch.load(path, map_location=self.args.device))
