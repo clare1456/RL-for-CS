@@ -56,7 +56,7 @@ while True:
     action = np.ones(col_num)
     probs = actor(state, info)
     for i in range(len(action)):
-        if np.random.rand() < probs[i][0]:
+        if probs[i][0] > 0.5:
             action[i] = 0
     # 若全不选，则随机留下一个
     if sum(action) == 0:
