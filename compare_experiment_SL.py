@@ -58,6 +58,9 @@ while True:
     for i in range(len(action)):
         if np.random.rand() < probs[i][0]:
             action[i] = 0
+    # 若全不选，则随机留下一个
+    if sum(action) == 0:
+        action[np.random.randint(len(action))] = 1
     state, reward, done, info = env.step(action)
     RMP = env.CGAlg.solve_final_RMP()
     ub = RMP.ObjVal
