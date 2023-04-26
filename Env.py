@@ -153,8 +153,6 @@ class CGWithSelection(ColumnGeneration.ColumnGenerationWithLabeling):
     def select_columns(self, select_result):
         if len(self.labeling_routes) == 0:
             return
-        if sum(select_result) == 0: # 若全不选，默认全选
-            select_result = [1] * len(select_result)
         self.labeling_routes = [self.labeling_routes[i] for i in range(len(self.labeling_routes)) if select_result[i]] 
         self.labeling_objs = [self.labeling_objs[i] for i in range(len(self.labeling_objs)) if select_result[i]]
         self.SP_obj = min(self.labeling_objs)
