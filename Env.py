@@ -27,6 +27,8 @@ class CGEnv(gym.Env):
         self.alpha = 1000 # reward rate of obj improvement
         # action_space, observation_space updates 
         self.step_cost = 1 # step punishment in reward
+        standard_file = json.load(open(args.standard_file, "r"))
+        self.max_min_info = standard_file["max_min_info"]
 
     def reset(self, instance=None):
         # reset Column Generation Algorithm
@@ -45,6 +47,14 @@ class CGEnv(gym.Env):
         self.iter_cnt = 0
         return state, info
 
+    def standardize_state(self, state):
+        for column_features in state["columns_state"]:
+            for fi in range(len(column_features)):
+                column_features[fi] = (column_features[fi] - column_features_min[fi]) / (column_features_max[fi] - column_features_min[fi])
+        for constraint_features in state["constraints_state"]:
+            for fi in range(len(constraint_features)):
+                constraint_features[fi] = (constraint_features[fi] - constraint_features_min[fi]) / (constraint_features_max[fi] - constraint_features_min[fi])
+
     def step(self, action: np.ndarray):
         action = np.clip(action, 0, 1)
         """ select columns and sove RLMP """
@@ -55,6 +65,7 @@ class CGEnv(gym.Env):
         obj_after = self.CGAlg.RLMP_obj
         """ get state, reward, done, info """
         state = self.CGAlg.get_column_selection_info()
+        self.standardize_state(state) # state standardization
         info = {}
         reward = self.alpha * (obj_before - obj_after) / self.obj_init - self.step_cost
         # reward = self.alpha * (obj_before - obj_after) / self.obj_init - self.step_cost * (sum(action) / len(action))
