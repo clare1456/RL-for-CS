@@ -20,8 +20,11 @@ class GAT(nn.Module):
         self.feature_gain = feature_gain
         self.node_linear = nn.Linear(node_feature_dim*feature_gain, hidden_dim).to(device)
         self.column_linear = nn.Linear(column_feature_dim*feature_gain, hidden_dim).to(device)
+        self.cat_linear = nn.Linear(hidden_dim, hidden_dim).to(device)
         self.conv1 = GATConv(hidden_dim, hidden_dim, heads=heads, dropout=dropout).to(device) # node to column
-        self.conv2 = GATConv(hidden_dim*heads, hidden_dim, dropout=dropout).to(device) # column to node
+        self.conv1_linear = nn.Linear(hidden_dim*heads, hidden_dim).to(device)
+        self.conv2 = GATConv(hidden_dim, hidden_dim, heads=heads, dropout=dropout).to(device) # column to node
+        self.conv2_linear = nn.Linear(hidden_dim*heads, hidden_dim).to(device)
         self.output = nn.Sequential(
             nn.Linear(hidden_dim, embed_dim).to(device), 
         )
@@ -48,8 +51,11 @@ class GAT(nn.Module):
         column_embeddings = F.relu(self.column_linear(column_features))
         # embedding concat
         embeddings = torch.cat([node_embeddings, column_embeddings], dim=0)
+        embeddings = F.relu(self.cat_linear(embeddings))
         embeddings = F.relu(self.conv1(embeddings, edges)) # column to node
+        embeddings = F.relu(self.conv1_linear(embeddings)) 
         embeddings = F.relu(self.conv2(embeddings, torch.flip(edges, [0]))) # node to column
+        embeddings = F.relu(self.conv2_linear(embeddings)) 
         logits = self.output(embeddings[-len(column_features):]) # get columns logits
         return logits
 
