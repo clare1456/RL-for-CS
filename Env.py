@@ -68,8 +68,8 @@ class CGEnv(gym.Env):
         state = self.CGAlg.get_column_selection_info()
         self.standardize_state(state) # state standardization
         info = {}
-        reward = self.alpha * (obj_before - obj_after) / self.obj_init - self.step_cost
-        # reward = self.alpha * (obj_before - obj_after) / self.obj_init - self.step_cost * (sum(action) / len(action))
+        # reward = self.alpha * (obj_before - obj_after) / self.obj_init - self.step_cost
+        reward = self.alpha * (obj_before - obj_after) / self.obj_init - self.step_cost * (sum(action) / len(action) + 1)
         done = 0
         self.iter_cnt += 1
         if CG_flag == 1 or self.iter_cnt >= self.max_step:
