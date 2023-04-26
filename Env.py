@@ -15,6 +15,7 @@ sys.path.append("CGAlgs")
 from utils.baseImport import *
 from CGAlgs import GraphTool, ColumnGeneration
 import gymnasium as gym
+import json
 
 class CGEnv(gym.Env):
     def __init__(self, args):
@@ -48,12 +49,12 @@ class CGEnv(gym.Env):
         return state, info
 
     def standardize_state(self, state):
-        for column_features in state["columns_state"]:
-            for fi in range(len(column_features)):
-                column_features[fi] = (column_features[fi] - column_features_min[fi]) / (column_features_max[fi] - column_features_min[fi])
-        for constraint_features in state["constraints_state"]:
-            for fi in range(len(constraint_features)):
-                constraint_features[fi] = (constraint_features[fi] - constraint_features_min[fi]) / (constraint_features_max[fi] - constraint_features_min[fi])
+        for column_state in state["columns_state"]:
+            for fi in range(len(column_state)):
+                column_state[fi] = (column_state[fi] - self.max_min_info["column_state_min"][fi]) / (self.max_min_info["column_state_max"][fi] - self.max_min_info["column_state_min"][fi])
+        for constraint_state in state["constraints_state"]:
+            for fi in range(len(constraint_state)):
+                constraint_state[fi] = (constraint_state[fi] - self.max_min_info["constraint_state_min"][fi]) / (self.max_min_info["constraint_state_max"][fi] - self.max_min_info["constraint_state_min"][fi])
 
     def step(self, action: np.ndarray):
         action = np.clip(action, 0, 1)
@@ -149,15 +150,12 @@ class CGWithSelection(ColumnGeneration.ColumnGenerationWithLabeling):
         }
         return info
 
-    def select_columns(self, select_result=None):
+    def select_columns(self, select_result):
         if len(self.labeling_routes) == 0:
             return
-        if select_result is None:
-            delete_idx = np.random.randint(len(self.labeling_routes))
-            self.labeling_routes.pop(delete_idx)
-        else:
-            self.labeling_routes = [self.labeling_routes[i] for i in range(len(self.labeling_routes)) if select_result[i]] 
-
+        self.labeling_routes = [self.labeling_routes[i] for i in range(len(self.labeling_routes)) if select_result[i]] 
+        self.labeling_objs = [self.labeling_objs[i] for i in range(len(self.labeling_objs)) if select_result[i]]
+        self.SP_obj = min(self.labeling_objs)
 
 if __name__ == "__main__":
     from run import Args
