@@ -20,13 +20,13 @@ from CGAlgs import GraphTool
 from Net import Actor
 from models.MHA import MHA
 from models.model_efgat_v1 import GAT_EFA_Net
-from models.GAT import GAT
+from models.GAT import *
 
 class Args:
     def __init__(self):
         self.save = 1
         self.file_name = "mini_batches_standard_60"
-        self.net = "GAT"
+        self.net = "GAT3"
         self.epochNum = 200
         self.batch_size = 128
         self.learning_rate = 1e-4
@@ -63,10 +63,12 @@ class SLTrainer:
         max_min_info = file["max_min_info"]
         self.train_data, self.test_data = self.preprocess_data(states, args.test_prop)
         # build model
-        if args.net == "MHA":
-            net = MHA(input_dim=3, embed_dim=128, hidden_dim=128, device=args.device)
-        elif args.net == "GAT":
+        if args.net == "GAT":
             net = GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
+        elif args.net == "GAT2":
+            net = GAT2(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
+        elif args.net == "GAT3":
+            net = GAT3(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
         self.actor = SLActor(net, device=args.device)
         self.optim = torch.optim.Adam(self.actor.parameters(), lr=args.learning_rate)
     
