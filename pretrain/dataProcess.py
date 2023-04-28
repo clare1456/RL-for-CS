@@ -60,9 +60,11 @@ class SLProcessor:
 
     ps: only consider new columns selection
     """
-    def __init__(self, file_list, save_path, seed=1):
+    def __init__(self, file_list, save_path, graph_path_base, columns_path_base, seed=1):
         self.file_list = file_list
         self.save_path = save_path
+        self.graph_path_base = graph_path_base
+        self.columns_path_base = columns_path_base
         # set random seed
         np.random.seed(seed)
         
@@ -196,8 +198,8 @@ class SLProcessor:
         # build MILPSolver
         self.milp_solver = MILPSolver()
         # read data and process data
-        graph_path = "pretrain/dataset_solved/GH_instance_1-10hard/" + file_name + ".json"
-        columns_path = "pretrain/dataset_solved/VRPTW_GH_1-10hard_solved/" + file_name + ".json"
+        graph_path = self.graph_path_base + file_name + ".json"
+        columns_path = self.columns_path_base + file_name + ".json"
         mini_batches, graph = self._read_data(graph_path, columns_path)
         # add labels to mini_batches with MILP
         self._get_labels(mini_batches)
@@ -228,12 +230,14 @@ class SLProcessor:
 
 if __name__ == "__main__":
     # get file list
-    total_file_list = os.listdir("pretrain\dataset_solved\GH_instance_1-10hard") 
+    graph_path_base = "pretrain\\dataset_solved\\GH_instance_200_1-10hard\\"
+    columns_path_base = "pretrain\\dataset_solved\\GH_instance_200_1-10hard_solved\\"
+    total_file_list = os.listdir(columns_path_base) 
     file_list = [file_name[:-5] for file_name in total_file_list][:1]
     # set save path
     save_path = "pretrain/dataset_processed/"
     # run
-    sl_processor = SLProcessor(file_list, save_path)
+    sl_processor = SLProcessor(file_list, save_path, graph_path_base, columns_path_base)
     sl_processor.run()
 
     
