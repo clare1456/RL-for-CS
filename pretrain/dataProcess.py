@@ -233,7 +233,7 @@ if __name__ == "__main__":
     graph_path_base = "pretrain\\dataset_solved\\GH_instance_200_1-10hard\\"
     columns_path_base = "pretrain\\dataset_solved\\GH_instance_200_1-10hard_solved\\"
     total_file_list = os.listdir(columns_path_base) 
-    file_list = [file_name[:-5] for file_name in total_file_list][:1]
+    file_list = [file_name[:-5] for file_name in total_file_list]
     # set save path
     save_path = "pretrain/dataset_processed/"
     # run
