@@ -198,7 +198,10 @@ class VRPTW_CG():
         }
 
         """ select columns """
+        select_result = np.ones(len(solutionPool))
         select_result = self.model(state)[:, 1].detach().numpy()
+        if sum(select_result) == 0:
+            select_result[0] = 1
         solutionPool = [sol for i,sol in enumerate(solutionPool) if select_result[i]>0.5]
         return solutionPool
         
@@ -275,7 +278,7 @@ if __name__=='__main__':
     import Net
     net = Net.GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=torch.device("cpu"))
     actor = Net.Actor(net)
-    actor.load_state_dict(torch.load("pretrain\\model_saved\\actor.pth", map_location=torch.device('cpu')))
+    actor.load_state_dict(torch.load("pretrain\\model_saved\\actor_standard_new.pth", map_location=torch.device('cpu')))
     #
     datapath = 'CG_test\GH_instance_1-10hard'  
     save_path = 'output'
