@@ -49,12 +49,15 @@ class ColumnGeneration():
         self.cg_iter_cnt = 0
         self.OutputFlag = 1
         self.timeRecord = 0
+        self.RLMP_timeRecord = 0
     
     def solve_RLMP_and_get_duals(self):
         """
         solve RLMP and get dual values 
         """
+        time1 = time.time()
         self.RLMP.optimize()
+        self.RLMP_timeRecord += time.time() - time1
         if self.RLMP.Status != 2:
             return 0 # infeasible
         for cons in self.RLMP.getConstrs():
