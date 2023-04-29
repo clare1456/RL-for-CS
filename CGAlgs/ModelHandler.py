@@ -101,9 +101,9 @@ class ModelHandler():
         """
         RLMP = gp.Model()
         # init solution with Heuristics
-        heuristic = Solomon_Insertion(graph)
-        routes = heuristic.run()
-        # routes = [[0, i, 0] for i in range(1, graph.nodeNum)]
+        # heuristic = Solomon_Insertion(graph)
+        # routes = heuristic.run()
+        routes = [[0, i, 0] for i in range(1, graph.nodeNum)]
         routes_length = []
         routes_a = np.zeros((len(routes), graph.nodeNum))
         for ri, route in enumerate(routes):

@@ -14,7 +14,7 @@ env = CGEnv(args)
 
 net = Net.GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
 actor = Net.Actor(net)
-actor.load_state_dict(torch.load("pretrain\\model_saved\\actor_standard.pth", map_location=torch.device('cpu')))
+actor.load_state_dict(torch.load("pretrain\\model_saved\\actor_standard_new.pth", map_location=torch.device('cpu')))
 start_time = time.time()
 
 # original column generation
