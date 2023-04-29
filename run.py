@@ -22,11 +22,11 @@ class Args:
     def __init__(self) -> None:
         ################################## 环境超参数 ###################################
         self.debug = 1 # 主线程运行而非单线程
-        self.instance = "C1_2_1" # 算例 / 生成模式 random or sequence
+        self.instance = "C1_2_10" # 算例 / 生成模式 random or sequence
         self.standard_file = "pretrain\dataset_processed\mini_batches_standard_30.json" # for state standardization
         self.map_change_eps = 2 # 地图更新周期, only for random / sequence
-        self.limit_node_num = 50 # 限制算例点的个数
-        self.max_step = 30 # CG最大迭代次数
+        self.limit_node_num = None # 限制算例点的个数
+        self.max_step = 100 # CG最大迭代次数
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 检测GPU
         self.seed = 2 # 随机种子，置0则不设置随机种子
         self.process_num = mp.cpu_count() // 2 if not self.debug else 1 # 每次训练的进程数

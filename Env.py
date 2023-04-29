@@ -43,6 +43,7 @@ class CGEnv(gym.Env):
         assert CG_flag == -1, "ERROR: Column Generation finished in 0 step"
         # get state from alg
         state = self.CGAlg.get_column_selection_info()
+        self.standardize_state(state) # state standardization
         self.obj_init = self.CGAlg.RLMP_obj
         info = {}
         self.iter_cnt = 0
