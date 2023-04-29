@@ -11,6 +11,7 @@ import sys
 parent_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_path)
 import torch, numpy as np
+import torchmetrics
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
 import json
@@ -142,12 +143,15 @@ class SLTrainer:
                         self.logger.add_scalar("loss/train_loss", avg_loss, iter_cnt)
                     loss = 0.0
                     # test 
-                    avg_test_loss, accuracy_1, accuracy_0, accuracy_weighted, predict_time = self.test()
+                    avg_test_loss, accuracy_1, accuracy_0, accuracy_weighted, predict_time, accuracy, precision, recall  = self.test()
                     if self.args.save:
                         self.logger.add_scalar("loss/test_loss", avg_test_loss, iter_cnt)
                         self.logger.add_scalar("accuracy/accuracy_1", accuracy_1, iter_cnt)
                         self.logger.add_scalar("accuracy/accuracy_0", accuracy_0, iter_cnt)
                         self.logger.add_scalar("accuracy/accuracy_weighted", accuracy_weighted, iter_cnt)
+                        self.logger.add_scalar("accuracy/accuracy", accuracy, iter_cnt)
+                        self.logger.add_scalar("accuracy/precision", precision, iter_cnt)
+                        self.logger.add_scalar("accuracy/recall", recall, iter_cnt)
                         self.logger.add_scalar("output/predict_time", predict_time, iter_cnt)
                     print("Iter {}/{}: train_loss = {:.2f}, test_loss = {:.2f}".format(iter_cnt+1, self.args.epochNum*len(self.train_data), avg_loss, avg_test_loss))
                 # record process
@@ -164,6 +168,8 @@ class SLTrainer:
     def test(self):
         loss_list = []
         predict_time_list = []
+        total_choices = []
+        total_labels = []
         # accuracy weight 
         total_num_1 = 0
         total_num_0 = 0
@@ -175,8 +181,10 @@ class SLTrainer:
             output = self.actor(state)[:, 1]
             time2 = time.time()
             predict_time_list.append(time2-time1)
-            choices = np.array([1 if np.random.rand() < prob else 0 for prob in output])
+            choices = [1 if np.random.rand() < prob else 0 for prob in output]
             labels = torch.FloatTensor(state["labels"]).to(self.args.device)
+            total_choices += choices
+            total_labels += state["labels"]
             # calculate mse loss 
             loss = self.cal_weighted_loss(output, labels).cpu().detach().numpy()
             loss_list.append(loss)
@@ -195,7 +203,10 @@ class SLTrainer:
         accuracy_0 = correct_num_0 / total_num_0
         accuracy_weighted = ((correct_num_1 * self.args.weight_1 + correct_num_0 * self.args.weight_0) 
                              / (total_num_1 * self.args.weight_1 + total_num_0 * self.args.weight_0))
-        return np.mean(loss_list), accuracy_1, accuracy_0, accuracy_weighted, np.mean(predict_time_list)
+        accuracy = torchmetrics.Accuracy(task="binary")(torch.tensor(total_choices), torch.tensor(total_labels)).cpu().detach().numpy()
+        precision = torchmetrics.Precision(task="binary")(torch.tensor(total_choices), torch.tensor(total_labels)).cpu().detach().numpy()
+        recall = torchmetrics.Recall(task="binary")(torch.tensor(total_choices), torch.tensor(total_labels)).cpu().detach().numpy()
+        return np.mean(loss_list), accuracy_1, accuracy_0, accuracy_weighted, np.mean(predict_time_list), accuracy, precision, recall
 
 if __name__ == "__main__":
     args = Args()

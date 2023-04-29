@@ -211,10 +211,7 @@ class SLProcessor:
         # process data
         states = []
         for file_name in tqdm.tqdm(self.file_list):
-            try:
-                states += self.single_process(file_name) # main process
-            except:
-                print("Something Wrong in instance {}, skipped".format(file_name))
+            states += self.single_process(file_name) # main process
         # pack file
         max_min_info = self.standardlization(states)
         file = {
@@ -230,8 +227,8 @@ class SLProcessor:
 
 if __name__ == "__main__":
     # get file list
-    graph_path_base = "pretrain\\dataset_solved\\GH_instance_200_1-10hard\\"
-    columns_path_base = "pretrain\\dataset_solved\\GH_instance_200_1-10hard_solved\\"
+    graph_path_base = "pretrain\\dataset_solved\\GH200_400_s1-10hard_olved\\GH_instance_1-10hard\\"
+    columns_path_base = "pretrain\\dataset_solved\\GH200_400_s1-10hard_olved\\GH_instance_1-10hard_solved\\"
     total_file_list = os.listdir(columns_path_base) 
     file_list = [file_name[:-5] for file_name in total_file_list]
     # set save path
