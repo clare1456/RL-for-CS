@@ -28,8 +28,8 @@ class Args:
         self.save = 1
         self.file_name = "mini_batches_standard_60"
         self.net = "GAT"
-        self.epochNum = 200
-        self.batch_size = 128
+        self.epochNum = 300
+        self.batch_size = 256
         self.learning_rate = 1e-4
         self.test_prop = 0.05
         self.weight_0 = 1
