@@ -31,11 +31,15 @@ def column_generation(model = None):
         # test: randomly delete a column
         col_num = len(state["columns_state"])
         action = np.ones(col_num)
-        if model is not None:
+        if model == "greedy":
+            action[1:] = 0
+        elif model is not None:
             probs = actor(state, info)
             for i in range(len(action)):
                 if probs[i][0] > 0.5:
                     action[i] = 0
+        if sum(action) == 0: # at least one column
+            action[np.random.randint(0, col_num)] = 1
         state, reward, done, info = env.step(action)
         ub = env.CGAlg.RLMP.ObjVal
         lb = max(env.CGAlg.RLMP.ObjVal + min(vehicleNum * env.CGAlg.SP_obj, 0), 0)
@@ -58,18 +62,23 @@ def column_generation(model = None):
 # run column generation
 origin_ub_lb_list, origin_RLMP_time_list, origin_time_list = column_generation()
 model_ub_lb_list, model_RLMP_time_list, model_time_list = column_generation(actor)
+greedy_ub_lb_list, greedy_RLMP_time_list, greedy_time_list = column_generation("greedy")
 # preprocess
 origin_ub_list = np.array(origin_ub_lb_list)[:,0]
 origin_ub_list = (origin_ub_list - min(origin_ub_list)) / (max(origin_ub_list) - min(origin_ub_list))
 model_ub_list = np.array(model_ub_lb_list)[:,0]
 model_ub_list = (model_ub_list - min(model_ub_list)) / (max(model_ub_list) - min(model_ub_list))
+greedy_ub_list = np.array(greedy_ub_lb_list)[:,0]
+greedy_ub_list = (greedy_ub_list - min(greedy_ub_list)) / (max(greedy_ub_list) - min(greedy_ub_list))
 origin_iter_list = np.arange(len(origin_ub_list))
 model_iter_list = np.arange(len(model_ub_list))
+greedy_iter_list = np.arange(len(greedy_ub_list))
 # plot graphs
 ## 1. RMP time
 plt.figure()
 plt.plot(origin_RLMP_time_list, origin_ub_list, label="origin_ub")
 plt.plot(model_RLMP_time_list, model_ub_list, label="model_ub")
+plt.plot(greedy_RLMP_time_list, greedy_ub_list, label="greedy_ub")
 title = args.instance + " RMP time"
 plt.title(title)
 plt.xlabel("RMP time")
@@ -80,6 +89,7 @@ plt.savefig('outputs/pictures/{}.png'.format(title))
 plt.figure()
 plt.plot(origin_time_list, origin_ub_list, label="origin_ub")
 plt.plot(model_time_list, model_ub_list, label="model_ub")
+plt.plot(greedy_time_list, greedy_ub_list, label="greedy_ub")
 title = args.instance + " total time"
 plt.title(title)
 plt.xlabel("time")
@@ -90,6 +100,7 @@ plt.savefig('outputs/pictures/{}.png'.format(title))
 plt.figure()
 plt.plot(origin_iter_list, origin_ub_list, label="origin_ub")
 plt.plot(model_iter_list, model_ub_list, label="model_ub")
+plt.plot(greedy_iter_list, greedy_ub_list, label="greedy_ub")
 title = args.instance + " iter"
 plt.title(title)
 plt.xlabel("iter")
