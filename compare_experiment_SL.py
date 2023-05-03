@@ -5,12 +5,14 @@ File Created: Saturday, 22nd April 2023 9:01:25 pm
 Author: Charles Lee (lmz22@mails.tsinghua.edu.cn)
 '''
 from Env import *
+from pretrain.dataProcess import MILPSolver
 from run import Args
 import Net
 import torch
 
 args = Args()
 args.instancce = "C1_2_2"
+args.max_step = 200
 
 net = Net.GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
 actor = Net.Actor(net)
@@ -20,11 +22,14 @@ def column_generation(model = None):
     start_time = time.time()
     env = CGEnv(args)
     state, info = env.reset(args.instance)
+    milp_solver = MILPSolver()
     iter_cnt = 0
     reward_list = []
     ub_lb_list = []
     RLMP_time_list = []
     time_list = []
+    present_columns = []
+    new_columns = []
     
     vehicleNum = 50 if env.CGAlg.graph.nodeNum < 400 else 100 # set vehicleNum manually
     while True:
@@ -33,6 +38,21 @@ def column_generation(model = None):
         action = np.ones(col_num)
         if model == "greedy":
             action[1:] = 0
+        elif model == "MILP":
+            present_columns = list(env.CGAlg.column_pool.values())
+            new_columns = env.CGAlg.labeling_routes.copy()
+            for columns in [present_columns, new_columns]:
+                for ci in range(len(columns)):
+                    route = columns[ci]
+                    columns[ci] = {}
+                    dist = 0
+                    onehot_path = [0] * env.CGAlg.graph.nodeNum
+                    for i in range(len(route)-1):
+                        onehot_path[route[i]] = 1
+                        dist += env.CGAlg.graph.disMatrix[route[i]][route[i+1]]
+                    columns[ci]["distance"] = dist
+                    columns[ci]["onehot_path"] = onehot_path
+            action = milp_solver.solve(present_columns, new_columns, env.CGAlg.graph.nodeNum)
         elif model is not None:
             probs = actor(state, info)
             for i in range(len(action)):
@@ -60,25 +80,32 @@ def column_generation(model = None):
         
 
 # run column generation
+MILP_ub_lb_list, MILP_RLMP_time_list, MILP_time_list = column_generation("MILP")
 origin_ub_lb_list, origin_RLMP_time_list, origin_time_list = column_generation()
 model_ub_lb_list, model_RLMP_time_list, model_time_list = column_generation(actor)
 greedy_ub_lb_list, greedy_RLMP_time_list, greedy_time_list = column_generation("greedy")
 # preprocess
 origin_ub_list = np.array(origin_ub_lb_list)[:,0]
 origin_ub_list = (origin_ub_list - min(origin_ub_list)) / (max(origin_ub_list) - min(origin_ub_list))
+max_origin_ub = max(origin_ub_list)
+min_origin_ub = min(origin_ub_list)
 model_ub_list = np.array(model_ub_lb_list)[:,0]
-model_ub_list = (model_ub_list - min(model_ub_list)) / (max(model_ub_list) - min(model_ub_list))
+model_ub_list = (model_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
 greedy_ub_list = np.array(greedy_ub_lb_list)[:,0]
-greedy_ub_list = (greedy_ub_list - min(greedy_ub_list)) / (max(greedy_ub_list) - min(greedy_ub_list))
+greedy_ub_list = (greedy_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
+MILP_ub_list = np.array(MILP_ub_lb_list)[:,0]
+MILP_ub_list = (MILP_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
 origin_iter_list = np.arange(len(origin_ub_list))
 model_iter_list = np.arange(len(model_ub_list))
 greedy_iter_list = np.arange(len(greedy_ub_list))
+MILP_iter_list = np.arange(len(MILP_ub_list))
 # plot graphs
 ## 1. RMP time
 plt.figure()
 plt.plot(origin_RLMP_time_list, origin_ub_list, label="origin_ub")
 plt.plot(model_RLMP_time_list, model_ub_list, label="model_ub")
 plt.plot(greedy_RLMP_time_list, greedy_ub_list, label="greedy_ub")
+plt.plot(MILP_RLMP_time_list, MILP_ub_list, label="MILP_ub")
 title = args.instance + " RMP time"
 plt.title(title)
 plt.xlabel("RMP time")
@@ -90,6 +117,7 @@ plt.figure()
 plt.plot(origin_time_list, origin_ub_list, label="origin_ub")
 plt.plot(model_time_list, model_ub_list, label="model_ub")
 plt.plot(greedy_time_list, greedy_ub_list, label="greedy_ub")
+plt.plot(MILP_time_list, MILP_ub_list, label="MILP_ub")
 title = args.instance + " total time"
 plt.title(title)
 plt.xlabel("time")
@@ -101,6 +129,7 @@ plt.figure()
 plt.plot(origin_iter_list, origin_ub_list, label="origin_ub")
 plt.plot(model_iter_list, model_ub_list, label="model_ub")
 plt.plot(greedy_iter_list, greedy_ub_list, label="greedy_ub")
+plt.plot(MILP_iter_list, MILP_ub_list, label="MILP_ub")
 title = args.instance + " iter"
 plt.title(title)
 plt.xlabel("iter")
