@@ -10,6 +10,7 @@ import Net
 import torch
 
 args = Args()
+args.instancce = "C1_2_2"
 
 net = Net.GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
 actor = Net.Actor(net)
@@ -33,7 +34,7 @@ def column_generation(model = None):
         if model is not None:
             probs = actor(state, info)
             for i in range(len(action)):
-                if probs[i][0] > 0.7:
+                if probs[i][0] > 0.5:
                     action[i] = 0
         state, reward, done, info = env.step(action)
         ub = env.CGAlg.RLMP.ObjVal
@@ -65,10 +66,33 @@ model_ub_list = (model_ub_list - min(model_ub_list)) / (max(model_ub_list) - min
 origin_iter_list = np.arange(len(origin_ub_list))
 model_iter_list = np.arange(len(model_ub_list))
 # plot graphs
+## 1. RMP time
+plt.figure()
+plt.plot(origin_RLMP_time_list, origin_ub_list, label="origin_ub")
+plt.plot(model_RLMP_time_list, model_ub_list, label="model_ub")
+title = args.instance + " RMP time"
+plt.title(title)
+plt.xlabel("RMP time")
+plt.ylabel("obj")
+plt.legend()
+plt.savefig('outputs/pictures/{}.png'.format(title))
+## 2. total time
+plt.figure()
+plt.plot(origin_time_list, origin_ub_list, label="origin_ub")
+plt.plot(model_time_list, model_ub_list, label="model_ub")
+title = args.instance + " total time"
+plt.title(title)
+plt.xlabel("time")
+plt.ylabel("obj")
+plt.legend()
+plt.savefig('outputs/pictures/{}.png'.format(title))
+## 3. iter times
+plt.figure()
 plt.plot(origin_iter_list, origin_ub_list, label="origin_ub")
 plt.plot(model_iter_list, model_ub_list, label="model_ub")
-plt.title(args.instance)
+title = args.instance + " iter"
+plt.title(title)
 plt.xlabel("iter")
 plt.ylabel("obj")
 plt.legend()
-plt.show()
+plt.savefig('outputs/pictures/{}.png'.format(title))

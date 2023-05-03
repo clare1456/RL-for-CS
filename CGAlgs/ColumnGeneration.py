@@ -45,6 +45,7 @@ class ColumnGeneration():
         self.RLMP_obj = np.inf # record result
         self.SP_obj = np.inf # use to check termination 
         self.EPS = 1e-6 # use to check termination
+        self.route_tabu = {} # use to avoid repeat routes
         # display part
         self.cg_iter_cnt = 0
         self.OutputFlag = 1
@@ -212,6 +213,9 @@ class ColumnGenerationWithLabeling(ColumnGeneration):
         routes = self.labeling_routes
         # add routes into RLMP
         for route in routes: 
+            if str(route) in self.route_tabu:
+                continue
+            self.route_tabu[str(route)] = 1
             # calculate route_length
             route_length = 0
             new_column = np.zeros(self.graph.nodeNum)
@@ -222,12 +226,12 @@ class ColumnGenerationWithLabeling(ColumnGeneration):
             self.add_column_into_RLMP(route, route_length, new_column)
 
 if __name__ == "__main__":
-    file_name = "problems\C101.txt"
+    # file_name = "problems\C101.txt"
     # file_name = "pretrain\dataset\GH_instance\RC\RC2_6_1.TXT"
-    # file_name = "pretrain\dataset\CGDataset\RC1_2_1.json"
+    file_name = "problems\C1_2_2.json"
     graph = GraphTool.Graph(file_name)
-    alg = ColumnGeneration(graph) # result: optimal 828.936, time 276.63s
-    # alg = ColumnGenerationWithLabeling(graph) # result: optimal 828.936, time 30.4s
+    # alg = ColumnGeneration(graph) # result: optimal 828.936, time 276.63s
+    alg = ColumnGenerationWithLabeling(graph) # result: optimal 828.936, time 30.4s
     routes = alg.run()
     obj = graph.evaluate(routes)
     print("obj = {}".format(obj))
