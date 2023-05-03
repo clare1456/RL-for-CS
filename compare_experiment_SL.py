@@ -13,8 +13,7 @@ args = Args()
 
 net = Net.GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
 actor = Net.Actor(net)
-actor.load_state_dict(torch.load("pretrain\\model_saved\\actor_standard_new.pth", map_location=torch.device('cpu')))
-
+actor.load_state_dict(torch.load("pretrain\\model_saved\\actor_standard_complete.pth", map_location=torch.device('cpu')))
 # original column generation
 def column_generation(model = None):
     start_time = time.time()
@@ -24,6 +23,8 @@ def column_generation(model = None):
     reward_list = []
     ub_lb_list = []
     RLMP_time_list = []
+    time_list = []
+    
     vehicleNum = 50 if env.CGAlg.graph.nodeNum < 400 else 100 # set vehicleNum manually
     while True:
         # test: randomly delete a column
@@ -32,7 +33,7 @@ def column_generation(model = None):
         if model is not None:
             probs = actor(state, info)
             for i in range(len(action)):
-                if np.random.rand() < probs[i][0]:
+                if probs[i][0] > 0.7:
                     action[i] = 0
         state, reward, done, info = env.step(action)
         ub = env.CGAlg.RLMP.ObjVal
@@ -40,6 +41,7 @@ def column_generation(model = None):
         reward_list.append(reward)
         ub_lb_list.append([ub, lb])
         RLMP_time_list.append(env.CGAlg.RLMP_timeRecord)
+        time_list.append(time.time() - start_time)
         print("Iter {}: delete column {}, reward = {}".format(iter_cnt, len(action)-sum(action), reward))
         if done:
             break
@@ -49,12 +51,12 @@ def column_generation(model = None):
         print("origin: final_obj = {}, iter_cnt = {}, total_reward = {}, time_cost = {}".format(env.CGAlg.RLMP_obj, iter_cnt, sum(reward_list), time_cost))
     else:
         print("model: final_obj = {}, iter_cnt = {}, total_reward = {}, time_cost = {}".format(env.CGAlg.RLMP_obj, iter_cnt, sum(reward_list), time_cost))
-    return ub_lb_list, RLMP_time_list
+    return ub_lb_list, RLMP_time_list, time_list
         
 
 # run column generation
-origin_ub_lb_list, origin_time_list = column_generation()
-model_ub_lb_list, model_time_list = column_generation(actor)
+origin_ub_lb_list, origin_RLMP_time_list, origin_time_list = column_generation()
+model_ub_lb_list, model_RLMP_time_list, model_time_list = column_generation(actor)
 # preprocess
 origin_ub_list = np.array(origin_ub_lb_list)[:,0]
 origin_ub_list = (origin_ub_list - min(origin_ub_list)) / (max(origin_ub_list) - min(origin_ub_list))
@@ -63,7 +65,10 @@ model_ub_list = (model_ub_list - min(model_ub_list)) / (max(model_ub_list) - min
 origin_iter_list = np.arange(len(origin_ub_list))
 model_iter_list = np.arange(len(model_ub_list))
 # plot graphs
-plt.plot(origin_time_list, origin_ub_list, label="origin_ub")
-plt.plot(model_time_list, model_ub_list, label="model_ub")
+plt.plot(origin_iter_list, origin_ub_list, label="origin_ub")
+plt.plot(model_iter_list, model_ub_list, label="model_ub")
+plt.title(args.instance)
+plt.xlabel("iter")
+plt.ylabel("obj")
 plt.legend()
 plt.show()
