@@ -25,10 +25,10 @@ from models.GAT import *
 
 class Args:
     def __init__(self):
-        self.save = 1
+        self.save = 0
         self.file_name = "mini_batches_standard_60"
-        self.net = "GAT"
-        self.epochNum = 300
+        self.net = "GAT4"
+        self.epochNum = 200
         self.batch_size = 256
         self.learning_rate = 1e-4
         self.test_prop = 0.05
@@ -70,6 +70,8 @@ class SLTrainer:
             net = GAT2(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
         elif args.net == "GAT3":
             net = GAT3(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
+        elif args.net == "GAT4":
+            net = GAT4(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
         self.actor = SLActor(net, device=args.device)
         self.optim = torch.optim.Adam(self.actor.parameters(), lr=args.learning_rate)
     
