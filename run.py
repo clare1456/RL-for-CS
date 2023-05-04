@@ -22,7 +22,7 @@ class Args:
     def __init__(self) -> None:
         ################################## 环境超参数 ###################################
         self.debug = 0 # 主线程运行而非单线程
-        self.instance = "C1_2_2" # 算例 / 生成模式 random or sequence
+        self.instance = "C1_2_1" # 算例 / 生成模式 random or sequence
         self.standard_file = "pretrain\dataset_processed\mini_batches_standard_60.json" # for state standardization
         self.map_change_eps = 2 # 地图更新周期, only for random / sequence
         self.limit_node_num = None # 限制算例点的个数
@@ -61,7 +61,7 @@ class Args:
         self.curr_path = os.path.dirname(os.path.abspath(__file__)) # 当前文件所在绝对路径
         self.load_policy_path = "" # 读取策略网络模型的路径
         self.load_net_path = ""#"pretrain\\model_saved\\net.pth" # 读取网络模型的路径
-        self.load_actor_path = "pretrain\\model_saved\\actor_standard_GAT4.pth"# 读取actor网络模型到actor, critic
+        self.load_actor_path = ""#"pretrain\\model_saved\\actor_standard_GAT4.pth"# 读取actor网络模型到actor, critic
         self.result_path = self.curr_path+"/outputs/" + self.instance + \
             '/'+self.curr_time+'/results/'  # 保存结果的路径
         self.model_path = self.curr_path+"/outputs/" + self.instance + \
