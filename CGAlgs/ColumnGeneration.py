@@ -191,7 +191,7 @@ class ColumnGenerationWithLabeling(ColumnGeneration):
     def __init__(self, graph, RLMP=None, column_pool=None):
         super().__init__(graph, RLMP=RLMP, SP=[], column_pool=column_pool) # no need to build SP
         # self.labeling = Labeling(graph, outputFlag=False)
-        self.labeling = Labeling(graph, select_num=2*self.graph.nodeNum, early_stop=1, outputFlag=False) # fast version
+        self.labeling = Labeling(graph, select_num=1000, early_stop=1, outputFlag=False) # fast version
 
     def solve_SP(self):
         """
@@ -228,7 +228,7 @@ class ColumnGenerationWithLabeling(ColumnGeneration):
 if __name__ == "__main__":
     # file_name = "problems\C101.txt"
     # file_name = "pretrain\dataset\GH_instance\RC\RC2_6_1.TXT"
-    file_name = "problems\C1_2_2.json"
+    file_name = "problems\C1_2_10.json"
     graph = GraphTool.Graph(file_name)
     # alg = ColumnGeneration(graph) # result: optimal 828.936, time 276.63s
     alg = ColumnGenerationWithLabeling(graph) # result: optimal 828.936, time 30.4s
