@@ -10,14 +10,15 @@ from run import Args
 import Net
 import torch
 import pickle
+import os
 
 args = Args()
 args.instancce = "C1_2_2"
 args.max_step = 200
 
-net = Net.GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
+net = Net.GAT4(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
 actor = Net.Actor(net)
-actor.load_state_dict(torch.load("pretrain\\model_saved\\actor_standard_complete.pth", map_location=torch.device('cpu')))
+actor.load_state_dict(torch.load("pretrain\\model_saved\\actor_standard_GAT4.pth", map_location=torch.device('cpu')))
 # original column generation
 def column_generation(model = "origin"):
     start_time = time.time()
@@ -129,7 +130,10 @@ data = {
     "greedy_iter_list": list(greedy_iter_list),
     "MILP_iter_list": list(MILP_iter_list),
 }
-with open("outputs/data/{}.pkl".format(args.instance), "wb") as f:
+path = "outputs/data/"
+if not os.path.exists(path):
+    os.makedirs(path)
+with open(path + "compare_{}.pkl".format(args.instance), "wb") as f:
     pickle.dump(data, f)
 # plot graphs
 ## 1. RMP time
