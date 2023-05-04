@@ -13,7 +13,7 @@ import json
 import os
 
 args = Args()
-args.instance = "C1_2_1"
+args.instance = "C1_2_10"
 args.max_step = 200
 
 net = Net.GAT4(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
@@ -158,18 +158,18 @@ else:
     MILP_iter_list = np.arange(len(MILP_ub_list))
 # plot graphs
 # normalize
-# max_origin_ub = max(origin_ub_list)
-# min_origin_ub = min(origin_ub_list)
-# max_origin_lb = max(origin_lb_list)
-# min_origin_lb = min(origin_lb_list)
-# origin_ub_list = (origin_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
-# origin_lb_list = (origin_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
-# model_ub_list = (model_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
-# model_lb_list = (model_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
-# greedy_ub_list = (greedy_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
-# greedy_lb_list = (greedy_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
-# MILP_ub_list = (MILP_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
-# MILP_lb_list = (MILP_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
+max_origin_ub = max(origin_ub_list)
+min_origin_ub = min(origin_ub_list)
+max_origin_lb = max(origin_lb_list)
+min_origin_lb = min(origin_lb_list)
+origin_ub_list = (origin_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
+origin_lb_list = (origin_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
+model_ub_list = (model_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
+model_lb_list = (model_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
+greedy_ub_list = (greedy_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
+greedy_lb_list = (greedy_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
+MILP_ub_list = (MILP_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
+MILP_lb_list = (MILP_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
 ## 1. RMP time
 plt.figure()
 plt.plot(origin_RLMP_time_list, origin_ub_list, label="origin_ub")
