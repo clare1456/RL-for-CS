@@ -9,6 +9,7 @@ from pretrain.dataProcess import MILPSolver
 from run import Args
 import Net
 import torch
+import pickle
 
 args = Args()
 args.instancce = "C1_2_2"
@@ -18,26 +19,28 @@ net = Net.GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=ar
 actor = Net.Actor(net)
 actor.load_state_dict(torch.load("pretrain\\model_saved\\actor_standard_complete.pth", map_location=torch.device('cpu')))
 # original column generation
-def column_generation(model = None):
+def column_generation(model = "origin"):
     start_time = time.time()
     env = CGEnv(args)
     state, info = env.reset(args.instance)
     milp_solver = MILPSolver()
-    iter_cnt = 0
-    reward_list = []
-    ub_lb_list = []
-    RLMP_time_list = []
-    time_list = []
-    present_columns = []
-    new_columns = []
-    
     vehicleNum = 50 if env.CGAlg.graph.nodeNum < 400 else 100 # set vehicleNum manually
+
+    iter_cnt = 0
+    reward_list = [0]
+    ub = env.CGAlg.RLMP.ObjVal
+    lb = max(env.CGAlg.RLMP.ObjVal + min(vehicleNum * env.CGAlg.SP_obj, 0), 0)
+    ub_lb_list = [[ub,lb]]
+    RLMP_time_list = [env.CGAlg.RLMP_timeRecord]
+    time_list = [time.time() - start_time]
+    extra_flag = False if model in ["greedy", "origin"] else True
+    
     while True:
         # test: randomly delete a column
         col_num = len(state["columns_state"])
-        action = np.ones(col_num)
         if model == "greedy":
-            action[1:] = 0
+            action = np.zeros(col_num)
+            action[0] = 1
         elif model == "MILP":
             present_columns = list(env.CGAlg.column_pool.values())
             new_columns = env.CGAlg.labeling_routes.copy()
@@ -53,21 +56,26 @@ def column_generation(model = None):
                     columns[ci]["distance"] = dist
                     columns[ci]["onehot_path"] = onehot_path
             action = milp_solver.solve(present_columns, new_columns, env.CGAlg.graph.nodeNum)
+        elif model == "origin":
+            action = np.ones(col_num)
         elif model is not None:
+            action = np.zeros(col_num)
             probs = actor(state, info)
             for i in range(len(action)):
-                if probs[i][0] > 0.5:
-                    action[i] = 0
+                if probs[i][1] > 0.5:
+                    action[i] = 1
+        else:
+            raise ValueError("model is None")
         if sum(action) == 0: # at least one column
             action[np.random.randint(0, col_num)] = 1
-        state, reward, done, info = env.step(action)
+        state, reward, done, info = env.step(action, extra_flag)
         ub = env.CGAlg.RLMP.ObjVal
         lb = max(env.CGAlg.RLMP.ObjVal + min(vehicleNum * env.CGAlg.SP_obj, 0), 0)
         reward_list.append(reward)
         ub_lb_list.append([ub, lb])
         RLMP_time_list.append(env.CGAlg.RLMP_timeRecord)
         time_list.append(time.time() - start_time)
-        print("Iter {}: delete column {}, reward = {}".format(iter_cnt, len(action)-sum(action), reward))
+        print("Iter {}: delete column {}, reward = {}, extra_route_num = {}".format(iter_cnt, len(action)-sum(action), reward, info["extra_route_num"]))
         if done:
             break
         iter_cnt += 1
@@ -80,15 +88,15 @@ def column_generation(model = None):
         
 
 # run column generation
-MILP_ub_lb_list, MILP_RLMP_time_list, MILP_time_list = column_generation("MILP")
-origin_ub_lb_list, origin_RLMP_time_list, origin_time_list = column_generation()
-model_ub_lb_list, model_RLMP_time_list, model_time_list = column_generation(actor)
 greedy_ub_lb_list, greedy_RLMP_time_list, greedy_time_list = column_generation("greedy")
+origin_ub_lb_list, origin_RLMP_time_list, origin_time_list = column_generation("origin")
+MILP_ub_lb_list, MILP_RLMP_time_list, MILP_time_list = column_generation("MILP")
+model_ub_lb_list, model_RLMP_time_list, model_time_list = column_generation(actor)
 # preprocess
 origin_ub_list = np.array(origin_ub_lb_list)[:,0]
-origin_ub_list = (origin_ub_list - min(origin_ub_list)) / (max(origin_ub_list) - min(origin_ub_list))
 max_origin_ub = max(origin_ub_list)
 min_origin_ub = min(origin_ub_list)
+origin_ub_list = (origin_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
 model_ub_list = np.array(model_ub_lb_list)[:,0]
 model_ub_list = (model_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
 greedy_ub_list = np.array(greedy_ub_lb_list)[:,0]
@@ -99,6 +107,30 @@ origin_iter_list = np.arange(len(origin_ub_list))
 model_iter_list = np.arange(len(model_ub_list))
 greedy_iter_list = np.arange(len(greedy_ub_list))
 MILP_iter_list = np.arange(len(MILP_ub_list))
+# save data
+data = {
+    "origin_ub_list": list(origin_ub_list),
+    "model_ub_list": list(model_ub_list),
+    "greedy_ub_list": list(greedy_ub_list),
+    "MILP_ub_list": list(MILP_ub_list),
+
+    "origin_RLMP_time_list": list(origin_RLMP_time_list),
+    "model_RLMP_time_list": list(model_RLMP_time_list),
+    "greedy_RLMP_time_list": list(greedy_RLMP_time_list),
+    "MILP_RLMP_time_list": list(MILP_RLMP_time_list),
+
+    "origin_time_list": list(origin_time_list),
+    "model_time_list": list(model_time_list),
+    "greedy_time_list": list(greedy_time_list),
+    "MILP_time_list": list(MILP_time_list),
+
+    "origin_iter_list": list(origin_iter_list),
+    "model_iter_list": list(model_iter_list),
+    "greedy_iter_list": list(greedy_iter_list),
+    "MILP_iter_list": list(MILP_iter_list),
+}
+with open("outputs/data/{}.pkl".format(args.instance), "wb") as f:
+    pickle.dump(data, f)
 # plot graphs
 ## 1. RMP time
 plt.figure()
