@@ -25,6 +25,8 @@ class basePolicy(nn.Module):
             self.net = Net.MHA(input_dim=3, embed_dim=128, hidden_dim=128, device=args.device)
         elif args.net == "GAT":
             self.net = Net.GAT(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
+        elif args.net == "GAT4":
+            self.net = Net.GAT4(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=args.device)
     
     def forward(self, state):
         column_num = len(state["columns_state"])
