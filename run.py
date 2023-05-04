@@ -35,8 +35,8 @@ class Args:
         ################################################################################
         
         ################################## 算法超参数 ####################################
-        self.net = "GAT" # GAT / MHA 选择 embedding 网络
-        self.policy = "PPO" # SAC / PPO 选择算法
+        self.net = "GAT4" # GAT / MHA 选择 embedding 网络
+        self.policy = "SAC" # SAC / PPO 选择算法
         self.gamma = 0.98  # 强化学习中的折扣因子
         self.actor_lr = 1e-4 # actor的学习率
         self.critic_lr = 1e-4 # critic的学习率
@@ -61,7 +61,7 @@ class Args:
         self.curr_path = os.path.dirname(os.path.abspath(__file__)) # 当前文件所在绝对路径
         self.load_policy_path = "" # 读取策略网络模型的路径
         self.load_net_path = ""#"pretrain\\model_saved\\net.pth" # 读取网络模型的路径
-        self.load_actor_path = "pretrain\\model_saved\\actor_standard.pth"# 读取actor网络模型到actor, critic
+        self.load_actor_path = "pretrain\\model_saved\\actor_standard_GAT4.pth"# 读取actor网络模型到actor, critic
         self.result_path = self.curr_path+"/outputs/" + self.instance + \
             '/'+self.curr_time+'/results/'  # 保存结果的路径
         self.model_path = self.curr_path+"/outputs/" + self.instance + \
