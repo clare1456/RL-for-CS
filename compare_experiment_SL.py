@@ -97,10 +97,6 @@ if not os.path.exists("outputs/data/compare_{}.json".format(args.instance)):
     # preprocess
     origin_ub_list = np.array(origin_ub_lb_list)[:,0]
     origin_lb_list = np.array(origin_ub_lb_list)[:,1]
-    max_origin_ub = max(origin_ub_list)
-    min_origin_ub = min(origin_ub_list)
-    max_origin_lb = max(origin_lb_list)
-    min_origin_lb = min(origin_lb_list)
     model_ub_list = np.array(model_ub_lb_list)[:,0]
     model_lb_list = np.array(model_ub_lb_list)[:,1]
     greedy_ub_list = np.array(greedy_ub_lb_list)[:,0]
@@ -111,15 +107,6 @@ if not os.path.exists("outputs/data/compare_{}.json".format(args.instance)):
     model_iter_list = np.arange(len(model_ub_list))
     greedy_iter_list = np.arange(len(greedy_ub_list))
     MILP_iter_list = np.arange(len(MILP_ub_list))
-    # normalize
-    # origin_ub_list = (origin_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
-    # origin_lb_list = (origin_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
-    # model_ub_list = (model_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
-    # model_lb_list = (model_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
-    # greedy_ub_list = (greedy_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
-    # greedy_lb_list = (greedy_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
-    # MILP_ub_list = (MILP_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
-    # MILP_lb_list = (MILP_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
     # save data
     data = {
         "origin_ub_list": list(origin_ub_list),
@@ -170,6 +157,19 @@ else:
     greedy_iter_list = np.arange(len(greedy_ub_list))
     MILP_iter_list = np.arange(len(MILP_ub_list))
 # plot graphs
+# normalize
+# max_origin_ub = max(origin_ub_list)
+# min_origin_ub = min(origin_ub_list)
+# max_origin_lb = max(origin_lb_list)
+# min_origin_lb = min(origin_lb_list)
+# origin_ub_list = (origin_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
+# origin_lb_list = (origin_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
+# model_ub_list = (model_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
+# model_lb_list = (model_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
+# greedy_ub_list = (greedy_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
+# greedy_lb_list = (greedy_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
+# MILP_ub_list = (MILP_ub_list - min_origin_ub) / (max_origin_ub - min_origin_ub)
+# MILP_lb_list = (MILP_lb_list - min_origin_lb) / (max_origin_lb - min_origin_lb)
 ## 1. RMP time
 plt.figure()
 plt.plot(origin_RLMP_time_list, origin_ub_list, label="origin_ub")
