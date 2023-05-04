@@ -21,7 +21,7 @@ class MILPSolver:
 
     ps: only consider new columns selection
     """
-    def __init__(self, epsilon1=0.001, epsilon2=0.1):
+    def __init__(self, epsilon1=0.00001, epsilon2=0.00001):
         # weight of minimize columnNum
         self.epsilon1 = epsilon1 # coef for present columns
         self.epsilon2 = epsilon2 # coef for new columns

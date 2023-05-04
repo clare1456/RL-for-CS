@@ -43,7 +43,7 @@ class CGEnv(gym.Env):
         assert CG_flag == -1, "ERROR: Column Generation finished in 0 step"
         # get state from alg
         state = self.CGAlg.get_column_selection_info()
-        # self.standardize_state(state) # state standardization
+        self.standardize_state(state) # state standardization
         self.obj_init = self.CGAlg.RLMP_obj
         info = {}
         self.iter_cnt = 0
@@ -57,18 +57,31 @@ class CGEnv(gym.Env):
             for fi in range(len(constraint_state)):
                 constraint_state[fi] = (constraint_state[fi] - self.max_min_info["constraint_state_min"][fi]) / (self.max_min_info["constraint_state_max"][fi] - self.max_min_info["constraint_state_min"][fi])
 
-    def step(self, action: np.ndarray):
+    def step(self, action: np.ndarray, extra_flag: bool = True):
+        """
+        Args: 
+            action: np.ndarray, shape = (route_num, )
+            extra_flag: bool, whether to select columns with negative reduced cost 
+        """
         action = np.clip(action, 0, 1)
-        """ select columns and sove RLMP """
+        info = {"extra_route_num": 0}
+        """ select columns predicted by RLMP and sove RLMP """
         obj_before = self.CGAlg.RLMP_obj
-        self.CGAlg.select_columns(action)
-        self.CGAlg.get_columns_and_add_into_RLMP()
-        CG_flag = self.CGAlg.column_generation_before_selection()
+        unselected_routes = [route for ri, route in enumerate(self.CGAlg.labeling_routes) if action[ri] == 0] # 预存所有未选择路
+        self.CGAlg.select_columns(action) # 根据action选择列
+        self.CGAlg.get_columns_and_add_into_RLMP() # 将列加入RLMP
+        if extra_flag:
+            self.CGAlg.solve_RLMP_and_get_duals() # 更新对偶值
+            """ select columns with negative rc and sove RLMP """
+            reduced_costs = self.CGAlg.evaluate_routes(unselected_routes) # 更新未选择路的对偶值
+            self.CGAlg.labeling_routes = [route for ri, route in enumerate(unselected_routes) if reduced_costs[ri] < 0] # 根据对偶值选择路
+            info["extra_route_num"] = len(self.CGAlg.labeling_routes) # 记录额外选择的路的数量
+            self.CGAlg.get_columns_and_add_into_RLMP() # 将列加入RLMP
+        CG_flag = self.CGAlg.column_generation_before_selection() # 进行列生成
         obj_after = self.CGAlg.RLMP_obj
         """ get state, reward, done, info """
         state = self.CGAlg.get_column_selection_info()
-        # self.standardize_state(state) # state standardization
-        info = {}
+        self.standardize_state(state) # state standardization
         # reward = self.alpha * (obj_before - obj_after) / self.obj_init - self.step_cost
         reward = self.alpha * (obj_before - obj_after) / self.obj_init - self.step_cost * (sum(action) / len(action) + 1)
         done = 0
@@ -95,7 +108,19 @@ class CGWithSelection(ColumnGeneration.ColumnGenerationWithLabeling):
     def __init__(self, graph):
         super(CGWithSelection, self).__init__(graph)
         self.OutputFlag = False
-
+    
+    def evaluate_routes(self, routes):
+        # 计算路经过的点的reduced cost
+        reduced_costs = []
+        for route in routes:
+            dual_sum = 0
+            dist_sum = 0
+            for i in range(1, len(route)):
+                dual_sum += self.duals_of_RLMP[f"R{route[i]}"]
+                dist_sum += self.graph.disMatrix[route[i-1]][route[i]]
+            reduced_costs.append(dist_sum - dual_sum)
+        return reduced_costs
+         
     def column_generation_before_selection(self):
         # solve RLMP and get duals
         is_feasible = self.solve_RLMP_and_get_duals()
