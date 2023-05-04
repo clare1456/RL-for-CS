@@ -25,10 +25,10 @@ from models.GAT import *
 
 class Args:
     def __init__(self):
-        self.save = 0
+        self.save = 1
         self.file_name = "mini_batches_standard_60"
         self.net = "GAT4"
-        self.epochNum = 200
+        self.epochNum = 400
         self.batch_size = 256
         self.learning_rate = 1e-4
         self.test_prop = 0.05
