@@ -57,6 +57,12 @@ class CGEnv(gym.Env):
             for fi in range(len(constraint_state)):
                 constraint_state[fi] = (constraint_state[fi] - self.max_min_info["constraint_state_min"][fi]) / (self.max_min_info["constraint_state_max"][fi] - self.max_min_info["constraint_state_min"][fi])
 
+    def reward_function1(self, iter_step):
+        return 1 - (1 - 1e-3 * iter_step) ** 0.35
+    
+    def reward_function2(self, column_num):
+        return max(0, (1 - (1.1 - 2e-4*column_num) ** 0.5))
+
     def step(self, action: np.ndarray, extra_flag: bool = True):
         """
         Args: 
@@ -84,7 +90,7 @@ class CGEnv(gym.Env):
         self.standardize_state(state) # state standardization
         # reward = self.alpha * (obj_before - obj_after) / self.obj_init - self.step_cost
         # reward = self.alpha * (obj_before - obj_after) / self.obj_init - self.step_cost * ((sum(action) + info["extra_route_num"]) / len(action))
-        reward = self.alpha * (obj_before - obj_after) / self.obj_init - (sum(action) + info["extra_route_num"])
+        reward = self.alpha * (obj_before - obj_after) / obj_before - self.reward_function1(self.iter_cnt) - self.reward_function2(sum(action) + info["extra_route_num"])
         done = 0
         self.iter_cnt += 1
         if CG_flag == 1 or self.iter_cnt >= self.max_step:
