@@ -95,6 +95,8 @@ class CGEnv(gym.Env):
         self.iter_cnt += 1
         if CG_flag == 1 or self.iter_cnt >= self.max_step:
             done = 1
+            if CG_flag == 1:
+                reward += 1000 # 结束大奖励
         return state, reward, done, info
     
     def get_final_RLMP_obj(self):
