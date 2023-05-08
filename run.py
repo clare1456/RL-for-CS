@@ -25,8 +25,8 @@ class Args:
         self.instance = "R1_2_1" # 算例 / 生成模式 random or sequence
         self.standard_file = "pretrain\dataset_processed\mini_batches_standard_60.json" # for state standardization
         self.map_change_eps = 10 # 地图更新周期, only for random / sequence
-        self.limit_node_num = 203 # 限制算例点的个数
-        self.max_step = 500 # CG最大迭代次数
+        self.limit_node_num = 100 # 限制算例点的个数
+        self.max_step = 100 # CG最大迭代次数
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 检测GPU
         self.seed = 2 # 随机种子，置0则不设置随机种子
         self.process_num = mp.cpu_count() // 2 if not self.debug else 1 # 每次训练的进程数
@@ -39,7 +39,7 @@ class Args:
         self.policy = "SAC" # SAC / PPO 选择算法
         self.gamma = 0.98  # 强化学习中的折扣因子
         self.actor_lr = 1e-6 # actor的学习率
-        self.critic_lr = 1e-6 # critic的学习率
+        self.critic_lr = 0 # critic的学习率
         # SAC 超参数
         self.batch_size = 5*self.limit_node_num  # 每次训练的batch大小(SAC)
         self.buffer_size = 200*self.limit_node_num # replay buffer的大小(SAC)

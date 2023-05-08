@@ -78,7 +78,6 @@ class VRPTW_CG():
             init_solution_vrptw = get_best_columns(self.graph,self.init_cg_name,filename=filename)
         return init_solution_vrptw
     
-    # lmz: change here 
     def solve(self):  # sourcery skip: extract-duplicate-method, low-code-quality
         s_time = time.time()
         self.RMP,self.rmp_constraints = self.build_RMP_gp()
@@ -103,12 +102,13 @@ class VRPTW_CG():
             self.IterDualValueList[self.iters] = SPP.graph.dualValue
             self.iterColumns[self.iters] = []
                 
-            SPP.solutionPool = self.column_manage(SPP.graph.dualValue, SPP.solutionPool)  # to be implemented
-
             for sol in SPP.solutionPool:
                 if sol.objVal < 0:
                     self.cg_count += 1 # need modify
                     self.add_new_column(sol)
+
+            self.column_manage()  # to be implemented
+
             # record info
             if self.isSave:
                 self.updateBound(SPP)
@@ -166,9 +166,9 @@ class VRPTW_CG():
         self.RMP.optimize()
         self.LB = max(self.RMP.objVal + min(self.columnUsedCount * SPP.solution.objVal,0), 0)
       
-    # lmz: change here
-    def column_manage(self, dual_value, solutionPool):
-        return solutionPool
+
+    def column_manage(self):
+        return 
               
     
     def print_SolPool(self):
@@ -221,85 +221,8 @@ class VRPTW_CG():
         self.update_RMP_Constr(new_path,path_distance,column_name)
         self.iterColumns[self.iters].append(column_name)
         
-class VRPTW_CG_CM(VRPTW_CG):
-    def __init__(self, graph, model, max_min_info, TimeLimit=2 * 60 * 60, SPPTimeLimit=3 * 60, SolCount=10, Max_iters=20000, isSave=False, SPP_alg='gp', initSol_alg='original', filename='', vehicleNum=50):
-        super().__init__(graph, TimeLimit, SPPTimeLimit, SolCount, Max_iters, isSave, SPP_alg, initSol_alg, filename, vehicleNum)
-        self.set_column_manage_model(model, max_min_info) 
-    
-    def set_column_manage_model(self, model, max_min_info):
-        self.model = model # column selection model
-        self.max_min_info = max_min_info # max and min info of columns
-    
-    def standardize_state(self, state):
-        for column_state in state["columns_state"]:
-            for fi in range(len(column_state)):
-                column_state[fi] = (column_state[fi] - self.max_min_info["column_state_min"][fi]) / (self.max_min_info["column_state_max"][fi] - self.max_min_info["column_state_min"][fi])
-        for constraint_state in state["constraints_state"]:
-            for fi in range(len(constraint_state)):
-                constraint_state[fi] = (constraint_state[fi] - self.max_min_info["constraint_state_min"][fi]) / (self.max_min_info["constraint_state_max"][fi] - self.max_min_info["constraint_state_min"][fi])
-
-    def column_manage(self, dualValue, solutionPool):
-        """ get state """
-        # 1. get states of columns
-        routes = [sol.path for sol in solutionPool]
-        columns_state = []
-        for route in routes:
-            dual_sum = 0
-            dist_sum = 0
-            demand_sum = 0
-            visit_num = len(route)
-            visited = [0] * self.graph.nodeNum
-            for i in range(1, len(route)):
-                dual_sum += dualValue[route[i]]
-                dist_sum += self.graph.disMatrix[route[i-1]][route[i]]
-                demand_sum += self.graph.demand[route[i]]
-                visited[route[i]] = 1
-            state = [dual_sum, dist_sum, demand_sum] # dim = (len(columns), 3)
-            columns_state.append(state)
-        # 2. get states of nodes
-        constraints_state = []
-        for ni in range(self.graph.nodeNum):
-            dual_value = dualValue[ni]
-            coor_x, coor_y = self.graph.location[ni]
-            demand = self.graph.demand[ni]
-            ready_time = self.graph.readyTime[ni]
-            due_time = self.graph.dueTime[ni]
-            service_time = self.graph.serviceTime[ni]
-            state = [dual_value, coor_x, coor_y, demand, ready_time, due_time] # dim = (len(constraints), 6)
-            constraints_state.append(state)
-        # 3. get edges
-        edges = [[], []]
-        for ri in range(len(routes)):
-            for ni in routes[ri][1:]:
-                edges[0].append(ri+self.graph.nodeNum) # dim = (2, len(constraints) * len(columns))
-                edges[1].append(ni) 
-        state = {
-            "columns_state" : np.array(columns_state), 
-            "constraints_state" : np.array(constraints_state), 
-            "edges" : np.array(edges), 
-        }
-        self.standardize_state(state)
-
-        """ select columns """
-        select_result = np.ones(len(solutionPool))
-        select_result = self.model(state)[:, 1].detach().numpy()
-        if sum(select_result) == 0:
-            select_result[0] = 1
-        solutionPool = [sol for i,sol in enumerate(solutionPool) if select_result[i]>0.5]
-        return solutionPool
-        
 if __name__=='__main__':
-    import os, sys
-    sys.path.append("D:\Code\RL-for-CS")
-    import torch
-    import Net
-    net = Net.GAT4(node_feature_dim=6, column_feature_dim=3, embed_dim=256, device=torch.device("cpu"))
-    actor = Net.Actor(net)
-    actor.load_state_dict(torch.load("pretrain\\model_saved\\actor_standard_GAT4.pth", map_location=torch.device('cpu')))
-    standard_file = json.load(open("pretrain\dataset_processed\mini_batches_standard_60.json", "r"))
-    max_min_info = standard_file["max_min_info"]
-    #
-    datapath = 'CG_test\GH_instance_1-10hard'  
+    datapath = 'GH_instance_1-10hard'  
     save_path = 'output'
     print('save_path:',save_path)
     for filename in tqdm(os.listdir(datapath)):
@@ -317,7 +240,7 @@ if __name__=='__main__':
         graph.dueTime = {int(key):val for key,val in graph.dueTime.items()}
         graph.disMatrix = {int(key):val for key,val in graph.disMatrix.items()}
         graph.feasibleNodeSet = {int(key):val for key,val in graph.feasibleNodeSet.items()}   
-        vrptw = VRPTW_CG_CM(graph, actor, max_min_info, 
+        vrptw = VRPTW_CG(graph,
                          TimeLimit=2*60*60,  # 总的求解时间限制，默认
                          SPPTimeLimit=10*60,  # 子问题最大求解时间，默认
                          SPP_alg='gp', # gp 代表子问题用GUROBI求解,默认
@@ -330,5 +253,4 @@ if __name__=='__main__':
         vrptw.solve()
         with open(os.path.join(save_path,filename),'w') as f:
             json.dump(vrptw.result, f)
-
 
