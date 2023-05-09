@@ -11,6 +11,7 @@ class VRPTW_CG_CM(VRPTW_CG):
     def __init__(self, graph, model, max_min_info, TimeLimit=2 * 60 * 60, SPPTimeLimit=3 * 60, SolCount=10, Max_iters=20000, isSave=False, SPP_alg='gp', initSol_alg='original', filename='', vehicleNum=50):
         super().__init__(graph, TimeLimit, SPPTimeLimit, SolCount, Max_iters, isSave, SPP_alg, initSol_alg, filename, vehicleNum)
         self.set_column_manage_model(model, max_min_info) 
+        self.min_select_num = 100
  
     def set_column_manage_model(self, model, max_min_info):
         self.model = model # column selection model
@@ -78,25 +79,28 @@ class VRPTW_CG_CM(VRPTW_CG):
                 select_solutions.append(solutionPool[i])
             else:
                 unselect_solutions.append(solutionPool[i])
-        """ update dualValues """
-        for sol in select_solutions:
-            if sol.objVal < 0:
-                self.cg_count += 1 # need modify
-                self.add_new_column(sol)
-        self.RMP.optimize()
-        dualValue = [0]+self.RMP.getAttr("Pi", self.RMP.getConstrs())+[0] # update dual_value
-        dualValue = np.array(dualValue)
-        """ select still negative columns """
-        objs = np.zeros(len(unselect_solutions))
-        for i in range(len(unselect_solutions)):
-            dual = 0
-            dist = 0
-            route = unselect_solutions[i].path
-            for j in range(1, len(route)):
-                dual += dualValue[route[j]]
-                dist += self.graph.disMatrix[route[j-1]][route[j]]
-            objs[i] = dist - dual
-        solutionPool = [sol for i, sol in enumerate(unselect_solutions) if objs[i] < 0]
+        if len(select_solutions) < self.min_select_num:
+            """ update dualValues """
+            for sol in select_solutions:
+                if sol.objVal < 0:
+                    self.cg_count += 1 # need modify
+                    self.add_new_column(sol)
+            self.RMP.optimize()
+            dualValue = [0]+self.RMP.getAttr("Pi", self.RMP.getConstrs())+[0] # update dual_value
+            dualValue = np.array(dualValue)
+            """ select still negative columns """
+            objs = np.zeros(len(unselect_solutions))
+            for i in range(len(unselect_solutions)):
+                dual = 0
+                dist = 0
+                route = unselect_solutions[i].path
+                for j in range(1, len(route)):
+                    dual += dualValue[route[j]]
+                    dist += self.graph.disMatrix[route[j-1]][route[j]]
+                objs[i] = dist - dual
+            solutionPool = [sol for i, sol in enumerate(unselect_solutions) if objs[i] < 0]
+        else:
+            solutionPool = select_solutions
         return solutionPool
    
     def solve(self):  # sourcery skip: extract-duplicate-method, low-code-quality

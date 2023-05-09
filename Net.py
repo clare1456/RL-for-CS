@@ -42,7 +42,7 @@ class Actor(nn.Module):
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
-        embeddings = self.preprocess(state)
+        embeddings = F.relu(self.preprocess(state))
         logits = self.last(embeddings)
         probs = F.softmax(logits, dim=-1) 
         return probs
@@ -72,7 +72,7 @@ class Critic(nn.Module):
         self, state: Union[np.ndarray, torch.Tensor], **kwargs: Any
     ) -> torch.Tensor:
         """Mapping: s -> V(s)."""
-        embeddings = self.preprocess(state)
+        embeddings = F.relu(self.preprocess(state))
         return self.last(embeddings)
     
 

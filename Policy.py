@@ -77,10 +77,10 @@ class SACPolicy(basePolicy):
     def calc_target(self, reward, next_state, done):
         next_prob = self.actor(next_state)
         next_log_prob = torch.log(next_prob + 1e-8)
-        entropy = -torch.mean(next_log_prob) 
+        entropy = -torch.mean(torch.sum(next_prob * next_log_prob, dim=-1)) 
         q1_value = self.target_critic_1(next_state)
         q2_value = self.target_critic_2(next_state)
-        min_qvalue = torch.sum(next_prob * torch.min(q1_value, q2_value))
+        min_qvalue = torch.sum(torch.sum(next_prob * torch.min(q1_value, q2_value), dim=-1))
         next_value = min_qvalue + self.log_alpha.exp() * entropy
         td_target = reward + self.gamma * next_value * (1 - done)
         return td_target
@@ -103,23 +103,23 @@ class SACPolicy(basePolicy):
             # critic loss
             td_target = self.calc_target(rewards[i], next_states[i], dones[i])
             critic_1_q_value = torch.sum(self.critic_1(states[i])[range(len(actions[i])), actions[i]]) 
-            critic_1_loss = F.mse_loss(critic_1_q_value, td_target.detach())
+            critic_1_loss = F.mse_loss(critic_1_q_value, td_target.detach()) / buffer.batch_size
             critic_1_optim.zero_grad()
             critic_1_loss.backward()
             critic_1_optim.step()
             critic_2_q_value = torch.sum(self.critic_2(states[i])[range(len(actions[i])), actions[i]]) 
-            critic_2_loss = F.mse_loss(critic_2_q_value, td_target.detach())
+            critic_2_loss = F.mse_loss(critic_2_q_value, td_target.detach()) / buffer.batch_size
             critic_2_optim.zero_grad()
             critic_2_loss.backward()
             critic_2_optim.step()
             # actor loss
             prob = self.actor(states[i])
             log_prob = torch.log(prob + 1e-8)
-            entropy = torch.mean(-log_prob)
+            entropy = -torch.mean(torch.sum(prob * log_prob, dim=-1))
             q1_value = self.critic_1(states[i])
             q2_value = self.critic_2(states[i])
             min_qvalue = torch.sum(prob * torch.min(q1_value, q2_value)) 
-            actor_loss = - self.log_alpha.exp() * entropy - min_qvalue
+            actor_loss = (-self.log_alpha.exp() * entropy - min_qvalue) / buffer.batch_size
             actor_optim.zero_grad()
             actor_loss.backward()
             actor_optim.step()

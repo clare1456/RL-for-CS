@@ -22,6 +22,7 @@ class CGEnv(gym.Env):
         self.instance = "initial"
         self.limit_node_num = args.limit_node_num
         self.max_step = args.max_step # max iteration in one episode
+        self.min_select_num = args.min_select_num # min column num in one episode
         # self.instance = args.instance
         # file_path = "problems\{}.txt".format(self.instance)
         # self.graph = GraphTool.Graph(file_path, self.limit_node_num)
