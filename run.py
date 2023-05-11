@@ -21,16 +21,16 @@ import torch.multiprocessing as mp
 class Args:
     def __init__(self) -> None:
         ################################## 环境超参数 ###################################
-        self.debug = 1 # 主线程运行而非单线程
+        self.debug = 0 # 主线程运行而非单线程
         self.instance = "R1_2_1" # 算例 / 生成模式 random or sequence
         self.standard_file = "pretrain\dataset_processed\mini_batches_standard_60.json" # for state standardization
         self.map_change_eps = 10 # 地图更新周期, only for random / sequence
-        self.limit_node_num = 100 # 限制算例点的个数
-        self.max_step = 100 # CG最大迭代次数
+        self.limit_node_num = 50 # 限制算例点的个数
+        self.max_step = 50 # CG最大迭代次数
         self.min_select_num = 100 # 最少选择的列数
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 检测GPU
         self.seed = 2 # 随机种子，置0则不设置随机种子
-        self.process_num = mp.cpu_count() // 2 if not self.debug else 1 # 每次训练的进程数
+        self.process_num = 3 if not self.debug else 1 # 每次训练的进程数
         self.train_eps = 5000 // self.process_num # 训练的回合数
         self.test_eps = 10 # 测试的回合数
         ################################################################################
@@ -39,15 +39,15 @@ class Args:
         self.net = "GAT4" # GAT / MHA 选择 embedding 网络
         self.policy = "SAC" # SAC / PPO 选择算法
         self.gamma = 0.98  # 强化学习中的折扣因子
-        self.actor_lr = 1e-6 # actor的学习率
-        self.critic_lr = 1e-6 # critic的学习率
+        self.actor_lr = 1e-5 # actor的学习率
+        self.critic_lr = 1e-5 # critic的学习率
         # SAC 超参数
-        self.batch_size = 5*self.limit_node_num  # 每次训练的batch大小(SAC)
+        self.batch_size = self.limit_node_num  # 每次训练的batch大小(SAC)
         self.buffer_size = 200*self.limit_node_num # replay buffer的大小(SAC)
         self.minimal_size = 10*self.limit_node_num # 开始训练的最少数据量(SAC)
         self.update_steps = self.limit_node_num/2 # 策略更新频率(SAC)
-        self.tau = 0.005 # 软更新参数(SAC)
-        self.target_entropy = -1 # 目标熵(SAC)
+        self.tau = 0.001 # 软更新参数(SAC)
+        self.target_entropy = -10 # 目标熵(SAC)
         self.alpha_lr = 1e-3 # alpha的学习率(SAC)
         # PPO 超参数
         self.update_eps = 1 # 策略更新频率(PPO)
@@ -61,12 +61,12 @@ class Args:
         self.curr_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")  # 获取当前时间 
         self.curr_path = os.path.dirname(os.path.abspath(__file__)) # 当前文件所在绝对路径
         self.load_policy_path = "" # 读取策略网络模型的路径
-        self.load_net_path = "pretrain\\model_saved\\net.pth"#"pretrain\\model_saved\\net.pth" # 读取网络模型的路径
+        self.load_net_path = "pretrain\\model_saved\\net_standard_new.pth"#"pretrain\\model_saved\\net.pth" # 读取网络模型的路径
         self.load_actor_path = ""#"pretrain\\model_saved\\actor_standard_GAT4.pth"# 读取actor网络模型到actor, critic
-        self.result_path = self.curr_path+"/outputs/" + self.instance + \
-            '/'+self.curr_time+'/results/'  # 保存结果的路径
-        self.model_path = self.curr_path+"/outputs/" + self.instance + \
-            '/'+self.curr_time+'/models/'  # 保存模型的路径
+        self.result_path = self.curr_path+"\\outputs\\" + self.instance + \
+            '\\'+self.curr_time+'\\results\\'  # 保存结果的路径
+        self.model_path = self.curr_path+"\\outputs\\" + self.instance + \
+            '\\'+self.curr_time+'\\models\\'  # 保存模型的路径
         ################################################################################
 
 if __name__ == "__main__":

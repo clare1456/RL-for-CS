@@ -16,6 +16,8 @@ from models.MHA import *
 from models.model_efgat_v1 import *
 from models.GAT import *
 
+import copy
+
 class Actor(nn.Module):
     def __init__(
         self,
@@ -25,7 +27,7 @@ class Actor(nn.Module):
     ) -> None:
         super().__init__()
         self.device = device
-        self.preprocess = preprocess_net
+        self.preprocess = copy.deepcopy(preprocess_net)
         self.input_dim = self.preprocess.embed_dim
         self.output_dim = 2
         self.hidden_dim = hidden_dim
@@ -57,7 +59,7 @@ class Critic(nn.Module):
     ) -> None:
         super().__init__()
         self.device = device
-        self.preprocess = preprocess_net
+        self.preprocess = copy.deepcopy(preprocess_net)
         self.input_dim = self.preprocess.embed_dim
         self.output_dim = 2
         self.hidden_dim = hidden_dim
@@ -102,7 +104,7 @@ class Actor_choose_one(nn.Module):
         info: Dict[str, Any] = {},
     ) -> Tuple[torch.Tensor, Any]:
         r"""Mapping: s -> Q(s, \*)."""
-        embeddings = self.preprocess(state)
+        embeddings = F.relu(self.preprocess(state))
         logits = self.last(embeddings).squeeze(-1)
         probs = F.softmax(logits, dim=-1) 
         return probs
@@ -132,7 +134,7 @@ class Critic_choose_one(nn.Module):
         self, state: Union[np.ndarray, torch.Tensor], **kwargs: Any
     ) -> torch.Tensor:
         """Mapping: s -> V(s)."""
-        embeddings = self.preprocess(state)
+        embeddings = F.relu(self.preprocess(state))
         return self.last(embeddings).squeeze(-1)
 
 
