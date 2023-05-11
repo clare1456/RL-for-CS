@@ -25,12 +25,12 @@ class Args:
         self.instance = "R1_2_1" # 算例 / 生成模式 random or sequence
         self.standard_file = "pretrain\dataset_processed\mini_batches_standard_60.json" # for state standardization
         self.map_change_eps = 10 # 地图更新周期, only for random / sequence
-        self.limit_node_num = 50 # 限制算例点的个数
-        self.max_step = 50 # CG最大迭代次数
+        self.limit_node_num = 405 # 限制算例点的个数
+        self.max_step = 100 # CG最大迭代次数
         self.min_select_num = 100 # 最少选择的列数
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 检测GPU
         self.seed = 2 # 随机种子，置0则不设置随机种子
-        self.process_num = 3 if not self.debug else 1 # 每次训练的进程数
+        self.process_num = mp.cpu_count() // 2 if not self.debug else 1 # 每次训练的进程数
         self.train_eps = 5000 // self.process_num # 训练的回合数
         self.test_eps = 10 # 测试的回合数
         ################################################################################
