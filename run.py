@@ -31,7 +31,7 @@ class Args:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # 检测GPU
         self.seed = 2 # 随机种子，置0则不设置随机种子
         self.process_num = mp.cpu_count() // 2 if not self.debug else 1 # 每次训练的进程数
-        self.train_eps = 5000 // self.process_num # 训练的回合数
+        self.train_eps = 20000 // self.process_num # 训练的回合数
         self.test_eps = 10 # 测试的回合数
         ################################################################################
         
@@ -47,7 +47,7 @@ class Args:
         self.minimal_size = 10*self.limit_node_num # 开始训练的最少数据量(SAC)
         self.update_steps = self.limit_node_num/2 # 策略更新频率(SAC)
         self.tau = 0.001 # 软更新参数(SAC)
-        self.target_entropy = -10 # 目标熵(SAC)
+        self.target_entropy = -1 # 目标熵(SAC)
         self.alpha_lr = 1e-3 # alpha的学习率(SAC)
         # PPO 超参数
         self.update_eps = 1 # 策略更新频率(PPO)
