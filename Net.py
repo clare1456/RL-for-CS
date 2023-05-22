@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.MHA import *
 from models.model_efgat_v1 import *
 from models.GAT import *
 

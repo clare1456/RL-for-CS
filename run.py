@@ -11,7 +11,7 @@ import torch.multiprocessing as mp
 
 class Args:
     def __init__(self) -> None:
-        self.debug = 0 
+        self.debug = 1 
         self.instance = "R1_2_1" 
         self.standard_file = "pretrain\dataset_processed\mini_batches_standard_60.json" 
         self.map_change_eps = 10 
