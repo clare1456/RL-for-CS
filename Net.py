@@ -1,12 +1,3 @@
-'''
-File: Net.py
-Project: ML4CS
-Description: Neural Network Models
------
-Author: CharlesLee
-Created Date: Tuesday March 7th 2023
-'''
-
 from utils.baseImport import *
 import torch
 import torch.nn as nn
@@ -148,7 +139,6 @@ class ActorCritic(nn.Module):
 class MLP(nn.Module):
     def __init__(self, input_dim, output_dim, hidden_dim, device="cpu"):
         super().__init__()
-        # 根据 hidden sizes 搭建神经网络
         self.device = device
         self.process = nn.Sequential(
             nn.Linear(input_dim, hidden_dim).to(device), 
@@ -158,8 +148,6 @@ class MLP(nn.Module):
         self.process.to(device=device)
     
     def forward(self, x):
-        # 检查类型
         if isinstance(x, torch.Tensor) == False:
             x = torch.Tensor(x).to(self.device)
-        # 输出结果
         return self.process(x)

@@ -26,8 +26,8 @@ class VRPTW_CG():
         self.RMP_ub_list = []
         self.SPP_objVal_list = []
         self.cg_count = 0
-        self.UB = 0 # feasible solution
-        self.LB = 0 # relaxation solution
+        self.UB = 0 
+        self.LB = 0 
         # parameters
         self.vehicleNum = vehicleNum
         self.epsilon = 1e-3
@@ -42,7 +42,7 @@ class VRPTW_CG():
         self.graph = graph
         self.SPP_alg = SPP_alg
         self.initSol_alg = initSol_alg
-        self.cg_vars = {}  # column management
+        self.cg_vars = {}  
         self.cost_time_list = []
         self.iterColumns = {}
         self.iters = 0
@@ -121,7 +121,6 @@ class VRPTW_CG():
             SPP.solve()
             self.SPP_timeCost.append(time.time()-spp_time)  
             
-        # solve with INTEGER VType
         for var in self.RMP.getVars(): 
             var.setAttr("VType", GRB.INTEGER)
         self.RMP.optimize()
@@ -143,7 +142,6 @@ class VRPTW_CG():
                 "RMP_lb_list":self.RMP_lb_list, 
                 "RMP_ub_list":self.RMP_ub_list, 
                 "SPP_objVal_list": self.SPP_objVal_list,
-                "columnSet":{key:sol.__dict__ for key,sol in self.solution.solSet.items()},
         }
         self.result = res  
               
@@ -203,7 +201,7 @@ class VRPTW_CG():
     def add_new_column(self,sol):
         new_path = sol.path 
         path_distance = sol.distance 
-        column_name = self.cg_name + str(self.cg_count) # add new column to RMP, then update 
+        column_name = self.cg_name + str(self.cg_count) 
         # record info
         self.SPP_objVal_list.append(sol.objVal)
         self.solution.solSet[column_name] = sol 
@@ -214,37 +212,39 @@ class VRPTW_CG():
         
 if __name__=='__main__':
     import os
-
-    datapath = 'GH_instance_1-10hard'  
-    save_path = 'vrptw_cg_multiple'
+    datapath = 'GHInstance_test_R'  
+    save_path = 'vrptw_cg_greedy_R'
     print('save_path:',save_path)
-    for filename in tqdm(os.listdir(datapath)):
-        if os.path.join(save_path,filename) in os.listdir(save_path): continue
-        print(f'\n {filename}')
-        filepath = os.path.join(datapath,filename)
-        with open(filepath,"r") as f:
-            data = json.load(f)
-        graph = Data()   
-        graph.__dict__ = data
-        graph.demand = {int(key):val for key,val in graph.demand.items()}
-        graph.location = {int(key):val for key,val in graph.location.items()}
-        graph.serviceTime = {int(key):val for key,val in graph.serviceTime.items()}
-        graph.readyTime = {int(key):val for key,val in graph.readyTime.items()}
-        graph.dueTime = {int(key):val for key,val in graph.dueTime.items()}
-        graph.disMatrix = {int(key):val for key,val in graph.disMatrix.items()}
-        graph.feasibleNodeSet = {int(key):val for key,val in graph.feasibleNodeSet.items()}   
-        vrptw = VRPTW_CG(graph,
-                         TimeLimit=2*60*60,  
-                         SPPTimeLimit=10*60,  
-                         SPP_alg='gp', 
-                         initSol_alg='simple',   
-                         filename=filename,
-                         SolCount=200,   
-                         Max_iters=20000,
-                         isSave=True,
-                         vehicleNum=50)  
-        vrptw.solve()
-        with open(os.path.join(save_path,filename),'w') as f:
-            json.dump(vrptw.result, f)
+    for iter in range(4):
+        for filename in tqdm(os.listdir(datapath)):
+            savefile = str(iter)+ filename
+            if savefile in os.listdir(save_path): continue
+            print(f'\n {savefile}')
+            print(f'\n {filename}')
+            filepath = os.path.join(datapath,filename)
+            with open(filepath,"r") as f:
+                data = json.load(f)
+            graph = Data()   
+            graph.__dict__ = data
+            graph.demand = {int(key):val for key,val in graph.demand.items()}
+            graph.location = {int(key):val for key,val in graph.location.items()}
+            graph.serviceTime = {int(key):val for key,val in graph.serviceTime.items()}
+            graph.readyTime = {int(key):val for key,val in graph.readyTime.items()}
+            graph.dueTime = {int(key):val for key,val in graph.dueTime.items()}
+            graph.disMatrix = {int(key):val for key,val in graph.disMatrix.items()}
+            graph.feasibleNodeSet = {int(key):val for key,val in graph.feasibleNodeSet.items()}   
+            vrptw = VRPTW_CG(graph,
+                            TimeLimit=2*60*60,  
+                            SPPTimeLimit=10*60,  
+                            SPP_alg='gp', 
+                            initSol_alg='simple',   
+                            filename=filename,
+                            SolCount=1,   
+                            Max_iters=20000,
+                            isSave=True,
+                            vehicleNum=50)  
+            vrptw.solve()
+            with open(os.path.join(save_path,savefile),'w') as f:
+                json.dump(vrptw.result, f)
 
 

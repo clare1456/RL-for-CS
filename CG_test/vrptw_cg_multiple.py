@@ -1,3 +1,4 @@
+
 from espprc_gp import ESPPRC_gp
 from espprc_ns import ESPPRC_NS
 from gurobipy import GRB,Model,Column
@@ -26,8 +27,8 @@ class VRPTW_CG():
         self.RMP_ub_list = []
         self.SPP_objVal_list = []
         self.cg_count = 0
-        self.UB = 0 # feasible solution
-        self.LB = 0 # relaxation solution
+        self.UB = 0 
+        self.LB = 0 
         # parameters
         self.vehicleNum = vehicleNum
         self.epsilon = 1e-3
@@ -42,7 +43,7 @@ class VRPTW_CG():
         self.graph = graph
         self.SPP_alg = SPP_alg
         self.initSol_alg = initSol_alg
-        self.cg_vars = {}  # column management
+        self.cg_vars = {}  
         self.cost_time_list = []
         self.iterColumns = {}
         self.iters = 0
@@ -143,7 +144,6 @@ class VRPTW_CG():
                 "RMP_lb_list":self.RMP_lb_list, 
                 "RMP_ub_list":self.RMP_ub_list, 
                 "SPP_objVal_list": self.SPP_objVal_list,
-                "columnSet":{key:sol.__dict__ for key,sol in self.solution.solSet.items()},
         }
         self.result = res  
               
@@ -185,6 +185,9 @@ class VRPTW_CG():
         rmp_col = Column(col_coef, self.rmp_constraints) 
         self.cg_vars[column_name] = self.RMP.addVar(lb = 0.0, ub = 1, obj = path_distance, vtype = GRB.CONTINUOUS, column = rmp_col,name=column_name)
         self.RMP.update() 
+        # lp file
+        # if self.isSave:
+        #     self.RMP.write('RMP.lp')
 
     def build_RMP_gp(self):
         '''
@@ -204,7 +207,7 @@ class VRPTW_CG():
         new_path = sol.path 
         path_distance = sol.distance 
         column_name = self.cg_name + str(self.cg_count) # add new column to RMP, then update 
-        # record info
+         # record info
         self.SPP_objVal_list.append(sol.objVal)
         self.solution.solSet[column_name] = sol 
         self.update_RMP_Constr(new_path,path_distance,column_name)
@@ -214,37 +217,39 @@ class VRPTW_CG():
         
 if __name__=='__main__':
     import os
-
-    datapath = 'GH_instance_1-10hard'  
-    save_path = 'vrptw_cg_multiple'
+    #
+    datapath = 'GHInstance_test_R'  
+    save_path = 'vrptw_cg_multiple_R'
     print('save_path:',save_path)
-    for filename in tqdm(os.listdir(datapath)):
-        if os.path.join(save_path,filename) in os.listdir(save_path): continue
-        print(f'\n {filename}')
-        filepath = os.path.join(datapath,filename)
-        with open(filepath,"r") as f:
-            data = json.load(f)
-        graph = Data()   
-        graph.__dict__ = data
-        graph.demand = {int(key):val for key,val in graph.demand.items()}
-        graph.location = {int(key):val for key,val in graph.location.items()}
-        graph.serviceTime = {int(key):val for key,val in graph.serviceTime.items()}
-        graph.readyTime = {int(key):val for key,val in graph.readyTime.items()}
-        graph.dueTime = {int(key):val for key,val in graph.dueTime.items()}
-        graph.disMatrix = {int(key):val for key,val in graph.disMatrix.items()}
-        graph.feasibleNodeSet = {int(key):val for key,val in graph.feasibleNodeSet.items()}   
-        vrptw = VRPTW_CG(graph,
-                         TimeLimit=2*60*60,  
-                         SPPTimeLimit=10*60,  
-                         SPP_alg='gp', 
-                         initSol_alg='simple',   
-                         filename=filename,
-                         SolCount=200,   
-                         Max_iters=20000,
-                         isSave=True,
-                         vehicleNum=50)  
-        vrptw.solve()
-        with open(os.path.join(save_path,filename),'w') as f:
-            json.dump(vrptw.result, f)
+    for iter in range(4):
+        for filename in tqdm(os.listdir(datapath)):
+            savefile = str(iter)+ filename
+            if savefile in os.listdir(save_path): continue
+            print(f'\n {savefile}')
+            filepath = os.path.join(datapath,filename)
+            with open(filepath,"r") as f:
+                data = json.load(f)
+            graph = Data()   
+            graph.__dict__ = data
+            graph.demand = {int(key):val for key,val in graph.demand.items()}
+            graph.location = {int(key):val for key,val in graph.location.items()}
+            graph.serviceTime = {int(key):val for key,val in graph.serviceTime.items()}
+            graph.readyTime = {int(key):val for key,val in graph.readyTime.items()}
+            graph.dueTime = {int(key):val for key,val in graph.dueTime.items()}
+            graph.disMatrix = {int(key):val for key,val in graph.disMatrix.items()}
+            graph.feasibleNodeSet = {int(key):val for key,val in graph.feasibleNodeSet.items()}   
+            vrptw = VRPTW_CG(graph,
+                            TimeLimit=2*60*60,  # 总的求解时间限制，默认
+                            SPPTimeLimit=10*60,  # 子问题最大求解时间，默认
+                            SPP_alg='gp', # gp 代表子问题用GUROBI求解,默认
+                            initSol_alg='simple',   # simple即最简单的初始解，默认
+                            filename=filename,
+                            SolCount=200,   # 每次加不超过200列
+                            Max_iters=20000,
+                            isSave=True,
+                            vehicleNum=50)  # 可以暂时不管，用来计算LB，但我们修改了时间窗，与原始的GH车辆不一样了，暂时不用它
+            vrptw.solve()
+            with open(os.path.join(save_path,savefile),'w') as f:
+                json.dump(vrptw.result, f)
 
 

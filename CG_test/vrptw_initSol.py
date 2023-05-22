@@ -10,8 +10,8 @@ def getSolution(graph,path):
         """ return a solution object given a path, status is used to determine if feasible
         """
         solution = SPPSolution()
-        solution.path = path[:]  # deepcopy
-        if len(path)!=len(set(path)):  # repeat check
+        solution.path = path[:] 
+        if len(path)!=len(set(path)):  
             solution.status=False
             return solution
         for from_node,to_node in zip(path[:-1],path[1:]):
@@ -32,7 +32,6 @@ def getSolution(graph,path):
         solution.objVal = round(solution.objVal,2)
         return solution
 
-# 如需要不同的初始解，在此依次添加
 def get_init_sol_original(graph,varName):
     """
         a simple rule to get initial solution of VRPTW. For 100-nodes instance, path like 0-node-101
@@ -120,8 +119,6 @@ if __name__=='__main__':
     graph.dueTime = {int(key):val for key,val in graph.dueTime.items()}
     graph.disMatrix = {int(key):val for key,val in graph.disMatrix.items()}
     graph.feasibleNodeSet = {int(key):val for key,val in graph.feasibleNodeSet.items()}   
-    # vrptw_initSol = get_init_sol_ns(graph,varName="init_cg_",SolCount=1000,TimeLimit=60)  
-    # vrptw_initSol = get_init_sol_original(graph,varName="init_cg_")  
     vrptw_initSol = get_init_sol_Nearest_Neighbor(graph,varName="init_cg_")  
     print("cgNum:",len(vrptw_initSol))
     print("Total_distance:",sum(sol.distance for sol in vrptw_initSol.values()))
