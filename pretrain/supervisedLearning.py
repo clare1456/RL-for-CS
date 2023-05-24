@@ -1,10 +1,3 @@
-'''
-File: supervisedLearning.py
-Project: pretrain
-File Created: Monday, 10th April 2023 10:03:22 am
-Author: Charles Lee (lmz22@mails.tsinghua.edu.cn)
-'''
-
 import os
 # os.environ['PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION'] = 'python'
 import sys

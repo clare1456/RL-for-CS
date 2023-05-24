@@ -1,10 +1,3 @@
-'''
-File: dataProcess.py
-Project: pretrain
-File Created: Monday, 17th April 2023 9:24:54 am
-Author: Charles Lee (lmz22@mails.tsinghua.edu.cn)
-'''
-
 import os
 import sys
 sys.path.append("D:\Code\RL-for-CS")

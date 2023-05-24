@@ -1,10 +1,3 @@
-'''
-File: GAT.py
-Project: models
-File Created: Monday, 17th April 2023 2:55:17 pm
-Author: Charles Lee (lmz22@mails.tsinghua.edu.cn)
-'''
-
 import torch, numpy as np
 import torch.nn as nn
 import torch.nn.functional as F

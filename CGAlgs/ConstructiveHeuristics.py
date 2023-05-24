@@ -1,7 +1,3 @@
-# Constructive Heuristic algorithms
-# author: Charles Lee
-# date: 2023.01.09
-
 import numpy as np
 import matplotlib.pyplot as plt
 import math

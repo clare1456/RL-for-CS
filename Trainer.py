@@ -73,9 +73,6 @@ def trainOffPolicy(policy, args, res_queue, outputFlag=False, seed=0):
 
 
 def trainOnPolicy(policy, args, res_queue, outputFlag=False, seed=0):
-    """ 
-    OnPolicy训练过程
-    """
     if seed != 0:
         torch.manual_seed(seed)
         random.seed(seed)
@@ -127,9 +124,6 @@ def trainOnPolicy(policy, args, res_queue, outputFlag=False, seed=0):
 
 
 def test(policy, args, outputFlag=False):
-    """
-    测试过程
-    """
     env = Env.CGEnv(args)
     ep_rewards = [] 
     if outputFlag:

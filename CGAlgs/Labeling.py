@@ -1,7 +1,3 @@
-# labeling algorithm for solving VRPTW subModel
-# author: Charles Lee
-# date: 2022.09.28
-
 import numpy as np
 import matplotlib.pyplot as plt
 import math
